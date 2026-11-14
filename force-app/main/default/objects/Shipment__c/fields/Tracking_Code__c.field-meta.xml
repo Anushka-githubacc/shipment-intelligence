@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Tracking_Code__c</fullName>
+    <caseSensitive>false</caseSensitive>
+    <description>Unique tracking number used to identify a shipment and retrieve its tracking information from the Shippo API.</description>
+    <externalId>true</externalId>
+    <label>Tracking Code</label>
+    <length>50</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>true</unique>
+</CustomField>
