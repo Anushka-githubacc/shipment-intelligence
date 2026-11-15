@@ -72,16 +72,18 @@ public with sharing class ShipmentService {
 
     // Saves records after all callouts have finished.
     public static void saveAll(List<Shipment__c> shipments) {
-        if (shipments == null || shipments.isEmpty()) {
-            return;
-        }
-
-        Database.upsert(
-            shipments,
-            Shipment__c.Tracking_Code__c,
-            true
-        );
+    if (shipments == null || shipments.isEmpty()) {
+        return;
     }
+
+    // Enforce the running user's object and field permissions.
+    Database.upsert(
+        shipments,
+        Shipment__c.Tracking_Code__c,
+        true,
+        AccessLevel.USER_MODE
+    );
+}
 
     // Backward-compatible method using the default provider.
     public static Shipment__c syncAndSave(
