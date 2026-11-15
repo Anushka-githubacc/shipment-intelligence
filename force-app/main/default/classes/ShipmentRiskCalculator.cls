@@ -46,7 +46,7 @@ public with sharing class ShipmentRiskCalculator {
             return r;
         }
 
-        // Recognized active shipment statuses
+        // Validate recognized active shipment statuses
         if (normalizedStatus != 'pre_transit' &&
             normalizedStatus != 'in_transit' &&
             normalizedStatus != 'out_for_delivery') {
@@ -63,38 +63,28 @@ public with sharing class ShipmentRiskCalculator {
             return r;
         }
 
-        // Calculate exact 24-hour boundaries
-        Datetime twentyFourHoursAgo = now.addHours(-24);
+        // Rule 5: Any past ETA for an undelivered shipment is Delayed
+        if (est <= now) {
+            r.level = 'Delayed';
+            r.reason = 'Estimated delivery time has passed';
+            return r;
+        }
+
+        // Rule 6: ETA within the next 24 hours is At Risk,
+        // except when the shipment is already Out for Delivery
         Datetime twentyFourHoursAhead = now.addHours(24);
 
-        // Rule 5: ETA passed by 24 hours or more
-        if (est <= twentyFourHoursAgo) {
-            r.level = 'Delayed';
+        if (est <= twentyFourHoursAhead &&
+            normalizedStatus != 'out_for_delivery') {
 
-            Long elapsedHours = (now.getTime() - est.getTime())
-                / (1000 * 60 * 60);
-
-            r.reason = elapsedHours +
-                ' hour(s) past estimated delivery';
-
-        }
-        // Rule 6: ETA passed, but less than 24 hours ago
-        else if (est < now) {
-            r.level = 'At Risk';
-            r.reason = 'Estimated delivery time has recently passed';
-
-        }
-        // Rule 7: ETA is within the next 24 hours
-        else if (est <= twentyFourHoursAhead) {
             r.level = 'At Risk';
             r.reason = 'Estimated delivery is within the next 24 hours';
+            return r;
+        }
 
-        }
-        // Rule 8: ETA is more than 24 hours away
-        else {
-            r.level = 'On Track';
-            r.reason = 'Within the estimated delivery time';
-        }
+        // Rule 7: Shipment is within its expected delivery timeline
+        r.level = 'On Track';
+        r.reason = 'Within the estimated delivery time';
 
         return r;
     }
