@@ -1,0 +1,312 @@
+<template>
+  <div class="dashboard">
+    <header class="masthead">
+      <div class="masthead-copy">
+        <p class="eyebrow">Logistics Intelligence Engine</p>
+        <h1>Shipment Dashboard</h1>
+        <p class="lede">
+          Live Salesforce shipments, delivery risk, and the current journey for
+          the selected record. Tracking synchronization uses Shippo.
+        </p>
+      </div>
+      <div class="masthead-actions">
+        <p class="test-badge" data-indicator="test-data">
+          <span class="test-badge-label">TEST DATA</span>
+          <span class="test-badge-note">
+            Shippo test mode. Not live carrier tracking.
+          </span>
+        </p>
+        <div class="action-row">
+          <button
+            type="button"
+            class="btn btn-ghost"
+            data-action="refresh"
+            disabled={refreshDisabled}
+            onclick={handleRefresh}
+          >
+            Refresh
+          </button>
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-action="sync-visible"
+            disabled={syncVisibleDisabled}
+            onclick={handleSyncVisible}
+          >
+            Sync visible
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <template lwc:if={isInitialLoading}>
+      <div class="state-card" data-state="loading" role="status">
+        <lightning-spinner
+          alternative-text="Loading shipments"
+          size="small"
+        ></lightning-spinner>
+        <p>Loading shipments from Salesforce.</p>
+      </div>
+    </template>
+
+    <template lwc:if={activityMessage}>
+      <p class="banner banner-info" role="status" data-state="activity">
+        {activityMessage}
+      </p>
+    </template>
+
+    <template lwc:if={loadError}>
+      <p class="banner banner-error" role="alert" data-state="error">
+        {loadError}
+      </p>
+    </template>
+
+    <template lwc:if={feedback}>
+      <p class={feedbackClass} role="status" data-state="feedback">
+        {feedback.message}
+      </p>
+    </template>
+
+    <section class="kpi-grid" aria-label="Shipment summary">
+      <article class="kpi kpi-total">
+        <p class="kpi-label">Total Shipments</p>
+        <p class="kpi-value" data-kpi-value="total">{kpis.total}</p>
+      </article>
+      <article class="kpi kpi-on-track">
+        <p class="kpi-label">On Track</p>
+        <p class="kpi-value" data-kpi-value="on-track">{kpis.onTrack}</p>
+      </article>
+      <article class="kpi kpi-at-risk">
+        <p class="kpi-label">At Risk</p>
+        <p class="kpi-value" data-kpi-value="at-risk">{kpis.atRisk}</p>
+      </article>
+      <article class="kpi kpi-delayed">
+        <p class="kpi-label">Delayed</p>
+        <p class="kpi-value" data-kpi-value="delayed">{kpis.delayed}</p>
+      </article>
+    </section>
+
+    <section class="toolbar card" aria-label="Shipment filters">
+      <lightning-input
+        class="field"
+        type="search"
+        label="Search"
+        placeholder="Tracking code or carrier"
+        data-filter="search"
+        onchange={handleSearchChange}
+      ></lightning-input>
+      <lightning-combobox
+        class="field"
+        label="Status"
+        value={statusFilter}
+        options={statusOptions}
+        data-filter="status"
+        onchange={handleStatusChange}
+      ></lightning-combobox>
+      <lightning-combobox
+        class="field"
+        label="Risk"
+        value={riskFilter}
+        options={riskOptions}
+        disabled={isRiskFilterDisabled}
+        data-filter="risk"
+        onchange={handleRiskChange}
+      ></lightning-combobox>
+      <lightning-input
+        class="field field-toggle"
+        type="toggle"
+        label="Needs Attention"
+        message-toggle-active="At Risk and Delayed"
+        message-toggle-inactive="All risk levels"
+        checked={needsAttention}
+        data-filter="attention"
+        onchange={handleAttentionToggle}
+      ></lightning-input>
+    </section>
+
+    <section class="bento">
+      <article class="card table-card">
+        <div class="card-heading">
+          <h2>Shipments</h2>
+          <p data-visible-count>{visibleCount} shown</p>
+        </div>
+
+        <template lwc:if={showEmpty}>
+          <div class="empty" data-state="empty">
+            <h3>No shipments yet</h3>
+            <p>
+              Salesforce has no shipment records to display. Refresh after
+              records are created.
+            </p>
+          </div>
+        </template>
+
+        <template lwc:if={showNoMatches}>
+          <div class="empty" data-state="no-matches">
+            <h3>No shipments match</h3>
+            <p>
+              No records match the current search, status, risk, or Needs
+              Attention filter.
+            </p>
+          </div>
+        </template>
+
+        <template lwc:if={showTable}>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Shipment</th>
+                  <th scope="col">Tracking code</th>
+                  <th scope="col">Carrier</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Estimated delivery</th>
+                  <th scope="col">Risk</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template for:each={visibleShipments} for:item="shipment">
+                  <tr
+                    key={shipment.id}
+                    class={shipment.rowClass}
+                    data-id={shipment.id}
+                    data-tracking={shipment.trackingCode}
+                    tabindex="0"
+                    aria-selected={shipment.isSelected}
+                    onclick={handleSelect}
+                    onkeydown={handleRowKeydown}
+                  >
+                    <td data-label="Shipment">{shipment.shipmentNumber}</td>
+                    <td data-label="Tracking code">{shipment.trackingCode}</td>
+                    <td data-label="Carrier">{shipment.carrier}</td>
+                    <td data-label="Status">{shipment.statusLabel}</td>
+                    <td data-label="Estimated delivery">
+                      <template lwc:if={shipment.hasEta}>
+                        <lightning-formatted-date-time
+                          value={shipment.eta}
+                          year="numeric"
+                          month="short"
+                          day="2-digit"
+                          hour="2-digit"
+                          minute="2-digit"
+                        ></lightning-formatted-date-time>
+                      </template>
+                      <template lwc:else>
+                        <span>Unavailable</span>
+                      </template>
+                    </td>
+                    <td data-label="Risk">
+                      <span class={shipment.riskClass}>
+                        {shipment.riskLevel}
+                      </span>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </template>
+      </article>
+
+      <article class="card journey-card" data-journey>
+        <div class="card-heading">
+          <h2>Shipment journey</h2>
+          <template lwc:if={selectedView}>
+            <p>{selectedView.shipmentNumber}</p>
+          </template>
+        </div>
+
+        <template lwc:if={selectedView}>
+          <dl class="facts">
+            <div>
+              <dt>Tracking code</dt>
+              <dd>{selectedView.trackingCode}</dd>
+            </div>
+            <div>
+              <dt>Carrier</dt>
+              <dd>{selectedView.carrier}</dd>
+            </div>
+            <div>
+              <dt>Provider</dt>
+              <dd>{selectedView.provider}</dd>
+            </div>
+            <div>
+              <dt>Status</dt>
+              <dd>{selectedView.statusLabel}</dd>
+            </div>
+            <div>
+              <dt>Estimated delivery</dt>
+              <dd>
+                <template lwc:if={selectedView.hasEta}>
+                  <lightning-formatted-date-time
+                    value={selectedView.eta}
+                    year="numeric"
+                    month="short"
+                    day="2-digit"
+                    hour="2-digit"
+                    minute="2-digit"
+                  ></lightning-formatted-date-time>
+                </template>
+                <template lwc:else>Unavailable</template>
+              </dd>
+            </div>
+            <div>
+              <dt>Risk</dt>
+              <dd>
+                <span class={selectedView.riskClass}>
+                  {selectedView.riskLevel}
+                </span>
+              </dd>
+            </div>
+          </dl>
+          <p class="reason">{selectedView.riskReason}</p>
+
+          <template lwc:if={journey.isException}>
+            <div
+              class="exception"
+              data-exception={journey.exceptionKey}
+              role="status"
+            >
+              <p class="exception-label">{journey.exceptionLabel}</p>
+              <p>{journey.exceptionMessage}</p>
+            </div>
+          </template>
+
+          <ol class="steps" aria-label="Shipment journey stages">
+            <template for:each={journey.stages} for:item="stage">
+              <li
+                key={stage.key}
+                class={stage.itemClass}
+                data-stage={stage.key}
+              >
+                <span class="marker" aria-hidden="true"></span>
+                <span class="step-copy">
+                  <span class="step-label">{stage.label}</span>
+                  <span class="step-state"> {stage.stateLabel} </span>
+                </span>
+              </li>
+            </template>
+          </ol>
+
+          <button
+            type="button"
+            class="btn btn-primary"
+            data-action="sync-selected"
+            disabled={syncSelectedDisabled}
+            onclick={handleSyncSelected}
+          >
+            Sync selected
+          </button>
+        </template>
+        <template lwc:else>
+          <div class="empty journey-empty" data-state="no-selection">
+            <h3>Select a shipment</h3>
+            <p>
+              The journey updates from the selected record’s normalized status.
+            </p>
+          </div>
+        </template>
+      </article>
+    </section>
+  </div>
+</template>
