@@ -1,4 +1,4 @@
-import { LightningElement, wire } from "lwc";
+import { LightningElement, wire, api } from "lwc";
 import { refreshApex } from "@salesforce/apex";
 import { ShowToastEvent } from "lightning/platformShowToastEvent";
 import getShipments from "@salesforce/apex/ShipmentController.getShipments";
@@ -263,6 +263,21 @@ export default class ShipmentDashboard extends LightningElement {
 
   get syncSelectedDisabled() {
     return this.refreshDisabled || !this.selectedRecord;
+  }
+
+  @api
+  get externalSearchTerm() {
+    return this.searchTerm;
+  }
+  set externalSearchTerm(value) {
+    const trimmed = value ? String(value).trim() : "";
+    this.searchTerm = trimmed || null;
+    this.reconcileSelection();
+  }
+
+  @api
+  refresh() {
+    this.handleRefresh();
   }
 
   get feedbackClass() {
