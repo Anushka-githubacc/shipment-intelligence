@@ -36,6 +36,36 @@ jest.mock(
   { virtual: true }
 );
 
+jest.mock(
+  "@salesforce/apex/ShipmentController.getShipmentDetail",
+  () => {
+    const { createApexTestWireAdapter } = require("@salesforce/sfdx-lwc-jest");
+    return {
+      default: createApexTestWireAdapter()
+    };
+  },
+  { virtual: true }
+);
+
+jest.mock(
+  "@salesforce/apex/ShipmentController.getShipmentEvents",
+  () => {
+    const { createApexTestWireAdapter } = require("@salesforce/sfdx-lwc-jest");
+    return {
+      default: createApexTestWireAdapter()
+    };
+  },
+  { virtual: true }
+);
+
+jest.mock(
+  "@salesforce/apex/ShipmentController.refreshShipment",
+  () => ({
+    default: jest.fn()
+  }),
+  { virtual: true }
+);
+
 function mount() {
   const element = createElement("c-logistics-app-shell", {
     is: LogisticsAppShell
@@ -98,55 +128,142 @@ describe("c-logistics-app-shell", () => {
     expect(activeNavItem.getAttribute("aria-current")).toBe("page");
   });
 
-  it("navigates to Coming Soon workspaces and displays appropriate placeholder", async () => {
+  it("renders exactly six real workspaces without obsolete placeholders", async () => {
+    const element = mount();
+    await flush();
+
+    const navItems = Array.from(
+      element.shadowRoot.querySelectorAll(".nav-item")
+    );
+
+    const workspaceIds = navItems.map((item) => item.dataset.workspace);
+
+    expect(workspaceIds).toEqual([
+      "control-tower",
+      "shipment-intelligence",
+      "risk-intelligence",
+      "exception-centre",
+      "analytics-reports",
+      "case-management"
+    ]);
+
+    expect(
+      element.shadowRoot.querySelector(
+        '[data-workspace="carrier-integrations"]'
+      )
+    ).toBeNull();
+
+    expect(
+      element.shadowRoot.querySelector(".coming-soon-container")
+    ).toBeNull();
+
+    expect(element.shadowRoot.querySelector(".badge-coming-soon")).toBeNull();
+  });
+
+  it("navigates to Exception Centre workspace", async () => {
+    const element = mount();
+    await flush();
+
+    const exceptionCentreBtn = element.shadowRoot.querySelector(
+      '[data-workspace="exception-centre"]'
+    );
+    expect(exceptionCentreBtn.querySelector(".badge-coming-soon")).toBeNull();
+
+    exceptionCentreBtn.click();
+    await flush();
+
+    expect(text(element, ".workspace-heading")).toBe("Exception Centre");
+    expect(
+      element.shadowRoot.querySelector('[data-view="exception-centre"]')
+    ).not.toBeNull();
+    expect(
+      element.shadowRoot.querySelector("c-exception-centre")
+    ).not.toBeNull();
+  });
+
+  it("navigates to Risk Intelligence workspace", async () => {
     const element = mount();
     await flush();
 
     const riskIntelligenceBtn = element.shadowRoot.querySelector(
       '[data-workspace="risk-intelligence"]'
     );
+    expect(riskIntelligenceBtn.querySelector(".badge-coming-soon")).toBeNull();
+
     riskIntelligenceBtn.click();
     await flush();
 
     expect(text(element, ".workspace-heading")).toBe("Risk Intelligence");
-    expect(element.shadowRoot.querySelector("c-shipment-dashboard")).toBeNull();
-
-    const comingSoonView = element.shadowRoot.querySelector(
-      '.coming-soon-container[data-view="risk-intelligence"]'
-    );
-    expect(comingSoonView).not.toBeNull();
-    expect(text(comingSoonView, ".coming-soon-title")).toBe(
-      "Risk Intelligence"
-    );
-    expect(text(comingSoonView, ".coming-soon-desc")).toContain(
-      "Predictive delay modelling"
-    );
-    expect(text(comingSoonView, ".badge-coming-soon-large")).toBe(
-      "Coming Soon"
-    );
+    expect(
+      element.shadowRoot.querySelector('[data-view="risk-intelligence"]')
+    ).not.toBeNull();
+    expect(
+      element.shadowRoot.querySelector("c-risk-intelligence")
+    ).not.toBeNull();
   });
 
-  it("returns to Control Tower when Return button is clicked from a Coming Soon view", async () => {
+  it("navigates to Analytics & Reports workspace", async () => {
     const element = mount();
     await flush();
 
-    element.shadowRoot
-      .querySelector('[data-workspace="exception-centre"]')
-      .click();
+    const analyticsBtn = element.shadowRoot.querySelector(
+      '[data-workspace="analytics-reports"]'
+    );
+    expect(analyticsBtn.querySelector(".badge-coming-soon")).toBeNull();
+
+    analyticsBtn.click();
     await flush();
 
+    expect(text(element, ".workspace-heading")).toBe("Analytics & Reports");
     expect(
-      element.shadowRoot.querySelector('[data-view="exception-centre"]')
+      element.shadowRoot.querySelector('[data-view="analytics-reports"]')
     ).not.toBeNull();
+    expect(
+      element.shadowRoot.querySelector("c-analytics-reports")
+    ).not.toBeNull();
+  });
 
-    element.shadowRoot
-      .querySelector('[data-action="return-control-tower"]')
-      .click();
+  it("navigates to Shipment Intelligence workspace", async () => {
+    const element = mount();
     await flush();
 
-    expect(text(element, ".workspace-heading")).toBe("Control Tower");
+    const shipmentIntelligenceBtn = element.shadowRoot.querySelector(
+      '[data-workspace="shipment-intelligence"]'
+    );
     expect(
-      element.shadowRoot.querySelector("c-shipment-dashboard")
+      shipmentIntelligenceBtn.querySelector(".badge-coming-soon")
+    ).toBeNull();
+
+    shipmentIntelligenceBtn.click();
+    await flush();
+
+    expect(text(element, ".workspace-heading")).toBe("Shipment Intelligence");
+    expect(
+      element.shadowRoot.querySelector('[data-view="shipment-intelligence"]')
+    ).not.toBeNull();
+    expect(
+      element.shadowRoot.querySelector("c-shipment-intelligence")
+    ).not.toBeNull();
+  });
+
+  it("navigates to Case Management workspace", async () => {
+    const element = mount();
+    await flush();
+
+    const caseMgmtBtn = element.shadowRoot.querySelector(
+      '[data-workspace="case-management"]'
+    );
+    expect(caseMgmtBtn.querySelector(".badge-coming-soon")).toBeNull();
+
+    caseMgmtBtn.click();
+    await flush();
+
+    expect(text(element, ".workspace-heading")).toBe("Case Management");
+    expect(
+      element.shadowRoot.querySelector('[data-view="case-management"]')
+    ).not.toBeNull();
+    expect(
+      element.shadowRoot.querySelector("c-case-management")
     ).not.toBeNull();
   });
 
@@ -169,31 +286,6 @@ describe("c-logistics-app-shell", () => {
     await flush();
 
     expect(dashboard.externalSearchTerm).toBe("SHIPPO-999");
-  });
-
-  it("switches back to Control Tower if global search is used from a Coming Soon workspace", async () => {
-    const element = mount();
-    await flush();
-
-    element.shadowRoot
-      .querySelector('[data-workspace="analytics-reports"]')
-      .click();
-    await flush();
-
-    expect(
-      element.shadowRoot.querySelector(".coming-soon-container")
-    ).not.toBeNull();
-
-    dispatchChange(element, '[data-element="global-search"]', {
-      value: "TRACK-EXPRESS"
-    });
-    jest.advanceTimersByTime(300);
-    await flush();
-
-    expect(text(element, ".workspace-heading")).toBe("Control Tower");
-    const dashboard = element.shadowRoot.querySelector("c-shipment-dashboard");
-    expect(dashboard).not.toBeNull();
-    expect(dashboard.externalSearchTerm).toBe("TRACK-EXPRESS");
   });
 
   it("delegates topbar refresh button click to child dashboard refresh method", async () => {

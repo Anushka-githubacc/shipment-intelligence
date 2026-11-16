@@ -9,7 +9,7 @@
           </div>
           <div class="brand-text">
             <p class="brand-title">LOGISTICS INTELLIGENCE</p>
-            <p class="brand-tagline">Monitor • Predict • Resolve</p>
+            <p class="brand-tagline">Monitor. Predict. Investigate. Resolve.</p>
           </div>
         </div>
       </div>
@@ -33,9 +33,6 @@
             </span>
             <span class="nav-label-group">
               <span class="nav-label">{ws.label}</span>
-              <template lwc:if={ws.isComingSoon}>
-                <span class="badge-coming-soon">Coming Soon</span>
-              </template>
             </span>
           </button>
         </template>
@@ -85,8 +82,9 @@
             ></lightning-icon>
           </button>
           <div class="workspace-breadcrumb">
-            <span class="app-eyebrow">Workspace</span>
+            <span class="app-eyebrow">Logistics Intelligence</span>
             <h1 class="workspace-heading">{currentWorkspace.label}</h1>
+            <p class="workspace-summary">{currentWorkspace.description}</p>
           </div>
         </div>
 
@@ -142,51 +140,48 @@
           </div>
         </template>
 
-        <!-- Coming Soon Placeholder Workspace -->
-        <template lwc:else>
-          <div
-            class="coming-soon-container"
-            data-view={currentWorkspace.id}
-            role="region"
-            aria-label={currentWorkspace.label}
-          >
-            <article class="coming-soon-card">
-              <div class="coming-soon-icon-box" aria-hidden="true">
-                <lightning-icon
-                  icon-name={currentWorkspace.icon}
-                  size="medium"
-                ></lightning-icon>
-              </div>
+        <!-- Shipment Intelligence Workspace -->
+        <template lwc:elseif={isShipmentIntelligenceActive}>
+          <div class="workspace-container" data-view="shipment-intelligence">
+            <c-shipment-intelligence
+              external-search-term={globalSearchTerm}
+            ></c-shipment-intelligence>
+          </div>
+        </template>
 
-              <div class="coming-soon-badge-row">
-                <span class="badge-coming-soon-large">Coming Soon</span>
-                <span class="badge-roadmap">Phase 2 Destination</span>
-              </div>
+        <!-- Risk Intelligence Workspace -->
+        <template lwc:elseif={isRiskIntelligenceActive}>
+          <div class="workspace-container" data-view="risk-intelligence">
+            <c-risk-intelligence
+              external-search-term={globalSearchTerm}
+            ></c-risk-intelligence>
+          </div>
+        </template>
 
-              <h2 class="coming-soon-title">{currentWorkspace.label}</h2>
-              <p class="coming-soon-desc">{currentWorkspace.description}</p>
+        <!-- Exception Centre Workspace -->
+        <template lwc:elseif={isExceptionCentreActive}>
+          <div class="workspace-container" data-view="exception-centre">
+            <c-exception-centre
+              external-search-term={globalSearchTerm}
+            ></c-exception-centre>
+          </div>
+        </template>
 
-              <div class="coming-soon-divider"></div>
+        <!-- Analytics & Reports Workspace -->
+        <template lwc:elseif={isAnalyticsReportsActive}>
+          <div class="workspace-container" data-view="analytics-reports">
+            <c-analytics-reports
+              external-search-term={globalSearchTerm}
+            ></c-analytics-reports>
+          </div>
+        </template>
 
-              <p class="coming-soon-note">
-                This workspace is planned for the next release. Real-time
-                telemetry, predictive modeling, and dedicated triage tools are
-                currently in architecture review.
-              </p>
-
-              <button
-                type="button"
-                class="btn-return"
-                data-action="return-control-tower"
-                onclick={handleReturnToControlTower}
-              >
-                <lightning-icon
-                  icon-name="utility:back"
-                  size="x-small"
-                ></lightning-icon>
-                <span>Return to Control Tower</span>
-              </button>
-            </article>
+        <!-- Case Management Workspace -->
+        <template lwc:elseif={isCaseManagementActive}>
+          <div class="workspace-container" data-view="case-management">
+            <c-case-management
+              external-search-term={globalSearchTerm}
+            ></c-case-management>
           </div>
         </template>
       </main>

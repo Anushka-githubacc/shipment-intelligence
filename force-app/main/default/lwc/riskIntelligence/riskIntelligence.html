@@ -1,0 +1,423 @@
+<template>
+  <div class="risk-container">
+    <!-- Top Workspace Header -->
+    <header class="risk-header">
+      <div class="header-text">
+        <h1 class="header-title">Risk Intelligence</h1>
+        <p class="header-subtitle">
+          Operational delay risk analysis, SLA compliance tracking, and
+          predictive exposure monitoring.
+        </p>
+      </div>
+      <div class="header-actions">
+        <lightning-button
+          label="Refresh"
+          icon-name="utility:refresh"
+          variant="neutral"
+          onclick={handleRefresh}
+          disabled={isRefreshing}
+          class="refresh-btn"
+        ></lightning-button>
+      </div>
+    </header>
+
+    <!-- KPI Cards Grid -->
+    <section class="kpi-grid" aria-label="Risk Metrics Summary">
+      <!-- Total Assessed -->
+      <div
+        class="kpi-card"
+        data-metric="total"
+        onclick={handleQuickRiskFilter}
+        data-risk="All"
+      >
+        <div class="kpi-top">
+          <span class="kpi-label">Total Assessed</span>
+          <lightning-icon
+            icon-name="utility:metrics"
+            size="small"
+            class="kpi-icon-neutral"
+          ></lightning-icon>
+        </div>
+        <div class="kpi-value">{totalCount}</div>
+        <div class="kpi-sub">Total active shipments monitored</div>
+      </div>
+
+      <!-- On Track -->
+      <div
+        class="kpi-card kpi-on-track"
+        data-metric="on-track"
+        onclick={handleQuickRiskFilter}
+        data-risk="On Track"
+      >
+        <div class="kpi-top">
+          <span class="kpi-label">On Track</span>
+          <lightning-icon
+            icon-name="utility:success"
+            size="small"
+            class="kpi-icon-on-track"
+          ></lightning-icon>
+        </div>
+        <div class="kpi-value-row">
+          <span class="kpi-value">{onTrackCount}</span>
+          <span class="kpi-pct pct-on-track">{onTrackPercentage}%</span>
+        </div>
+        <div class="kpi-sub">Progressing within delivery SLA</div>
+      </div>
+
+      <!-- At Risk -->
+      <div
+        class="kpi-card kpi-at-risk"
+        data-metric="at-risk"
+        onclick={handleQuickRiskFilter}
+        data-risk="At Risk"
+      >
+        <div class="kpi-top">
+          <span class="kpi-label">At Risk</span>
+          <lightning-icon
+            icon-name="utility:warning"
+            size="small"
+            class="kpi-icon-at-risk"
+          ></lightning-icon>
+        </div>
+        <div class="kpi-value-row">
+          <span class="kpi-value">{atRiskCount}</span>
+          <span class="kpi-pct pct-at-risk">{atRiskPercentage}%</span>
+        </div>
+        <div class="kpi-sub">Approaching SLA window deadline</div>
+      </div>
+
+      <!-- Delayed -->
+      <div
+        class="kpi-card kpi-delayed"
+        data-metric="delayed"
+        onclick={handleQuickRiskFilter}
+        data-risk="Delayed"
+      >
+        <div class="kpi-top">
+          <span class="kpi-label">Delayed</span>
+          <lightning-icon
+            icon-name="utility:error"
+            size="small"
+            class="kpi-icon-delayed"
+          ></lightning-icon>
+        </div>
+        <div class="kpi-value-row">
+          <span class="kpi-value">{delayedCount}</span>
+          <span class="kpi-pct pct-delayed">{delayedPercentage}%</span>
+        </div>
+        <div class="kpi-sub">SLA breached or delivery exception</div>
+      </div>
+    </section>
+
+    <!-- Risk Distribution Visualizer -->
+    <section class="distribution-card" aria-label="Risk Distribution">
+      <div class="distribution-header">
+        <h2 class="section-title">Risk Distribution</h2>
+        <div class="distribution-legend">
+          <span class="legend-item">
+            <span class="legend-dot dot-on-track"></span> On Track
+            ({onTrackPercentage}%)
+          </span>
+          <span class="legend-item">
+            <span class="legend-dot dot-at-risk"></span> At Risk
+            ({atRiskPercentage}%)
+          </span>
+          <span class="legend-item">
+            <span class="legend-dot dot-delayed"></span> Delayed
+            ({delayedPercentage}%)
+          </span>
+        </div>
+      </div>
+      <!-- Segmented Distribution Bar -->
+      <div
+        class="distribution-bar"
+        role="progressbar"
+        aria-valuemin="0"
+        aria-valuemax="100"
+      >
+        <div
+          class="bar-segment seg-on-track"
+          style={onTrackBarStyle}
+          title={onTrackTitle}
+        ></div>
+        <div
+          class="bar-segment seg-at-risk"
+          style={atRiskBarStyle}
+          title={atRiskTitle}
+        ></div>
+        <div
+          class="bar-segment seg-delayed"
+          style={delayedBarStyle}
+          title={delayedTitle}
+        ></div>
+      </div>
+    </section>
+
+    <!-- Main Content Area: Table + Optional Inspection Panel -->
+    <div class={mainLayoutClass}>
+      <!-- Table Section -->
+      <section class="table-card">
+        <!-- Toolbar with Search and Filters -->
+        <div class="table-toolbar">
+          <div class="search-box">
+            <lightning-input
+              type="search"
+              variant="label-hidden"
+              label="Search Risk Table"
+              placeholder="Search tracking code, carrier, reference..."
+              value={searchTerm}
+              onchange={handleSearchChange}
+              class="risk-search-input"
+            ></lightning-input>
+          </div>
+          <div class="filter-controls">
+            <lightning-combobox
+              variant="label-hidden"
+              label="Risk Filter"
+              value={riskFilter}
+              options={riskOptions}
+              onchange={handleRiskFilterChange}
+              class="filter-select"
+            ></lightning-combobox>
+            <lightning-combobox
+              variant="label-hidden"
+              label="Status Filter"
+              value={statusFilter}
+              options={statusOptions}
+              onchange={handleStatusFilterChange}
+              class="filter-select"
+            ></lightning-combobox>
+            <template lwc:if={hasActiveFilters}>
+              <button
+                type="button"
+                class="btn-clear-filters"
+                onclick={handleClearFilters}
+                title="Clear applied filters"
+              >
+                Clear
+              </button>
+            </template>
+          </div>
+          <div class="records-badge">
+            <span>{filteredCount} shipments</span>
+          </div>
+        </div>
+
+        <!-- Table Content Body -->
+        <div class="table-body">
+          <template lwc:if={isLoading}>
+            <div class="state-container">
+              <lightning-spinner
+                alternative-text="Loading risk assessments"
+                size="medium"
+              ></lightning-spinner>
+            </div>
+          </template>
+          <template lwc:elseif={hasError}>
+            <div class="state-container state-error">
+              <lightning-icon
+                icon-name="utility:error"
+                variant="error"
+                size="medium"
+              ></lightning-icon>
+              <h3 class="state-title">Unable to load risk assessments</h3>
+              <p class="state-message">{errorMessage}</p>
+            </div>
+          </template>
+          <template lwc:elseif={hasNoRecords}>
+            <div class="state-container state-empty">
+              <lightning-icon
+                icon-name="utility:search"
+                size="medium"
+              ></lightning-icon>
+              <h3 class="state-title">No matching shipments found</h3>
+              <p class="state-message">
+                Try adjusting your search criteria or resetting filters.
+              </p>
+              <button
+                type="button"
+                class="btn-reset-empty"
+                onclick={handleClearFilters}
+              >
+                Reset Filters
+              </button>
+            </div>
+          </template>
+          <template lwc:else>
+            <div class="table-responsive">
+              <table class="risk-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Shipment Ref</th>
+                    <th scope="col">Tracking Code</th>
+                    <th scope="col">Carrier</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Risk Level</th>
+                    <th scope="col">Risk Explanation</th>
+                    <th scope="col">Est. Delivery</th>
+                    <th scope="col" class="th-actions">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template for:each={formattedShipments} for:item="item">
+                    <tr
+                      key={item.Id}
+                      class={item.rowClass}
+                      data-id={item.Id}
+                      onclick={handleRowClick}
+                    >
+                      <td class="td-ref font-mono">{item.Name}</td>
+                      <td class="td-code font-mono font-bold">
+                        {item.Tracking_Code__c}
+                      </td>
+                      <td>
+                        <span class="carrier-pill">{item.Carrier__c}</span>
+                      </td>
+                      <td>
+                        <span class={item.statusClass}>{item.statusLabel}</span>
+                      </td>
+                      <td>
+                        <span class={item.riskClass}>{item.Risk_Level__c}</span>
+                      </td>
+                      <td class="td-reason" title={item.Risk_Reason__c}>
+                        <span class="reason-text">{item.Risk_Reason__c}</span>
+                      </td>
+                      <td class="td-eta">{item.formattedEta}</td>
+                      <td class="td-actions">
+                        <button
+                          type="button"
+                          class="btn-inspect"
+                          data-id={item.Id}
+                          onclick={handleInspectClick}
+                          title="Inspect risk details"
+                        >
+                          Inspect
+                        </button>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </template>
+        </div>
+      </section>
+
+      <!-- Risk Inspection Panel (Shown when a shipment is selected) -->
+      <template lwc:if={selectedShipment}>
+        <aside class="inspection-panel" aria-label="Shipment Risk Inspection">
+          <div class="panel-header">
+            <div class="panel-title-group">
+              <span class="panel-eyebrow">Risk Inspection</span>
+              <h2 class="panel-title font-mono">
+                {selectedShipment.Tracking_Code__c}
+              </h2>
+            </div>
+            <button
+              type="button"
+              class="btn-close-panel"
+              onclick={handleCloseDetail}
+              aria-label="Close risk inspection"
+              title="Close inspection"
+            >
+              <lightning-icon
+                icon-name="utility:close"
+                size="x-small"
+              ></lightning-icon>
+            </button>
+          </div>
+
+          <div class="panel-body">
+            <!-- Prominent Risk Badge & Reason -->
+            <div class="panel-risk-block">
+              <div class="panel-badge-row">
+                <span class={selectedShipmentRiskClass}
+                  >{selectedShipment.Risk_Level__c}</span
+                >
+                <span class={selectedShipmentStatusClass}
+                  >{selectedShipmentStatusLabel}</span
+                >
+              </div>
+              <h3 class="panel-reason-heading">Calculated Risk Explanation</h3>
+              <p class="panel-reason-text">{selectedShipmentRiskReason}</p>
+              <div class="panel-audit-note">
+                <lightning-icon
+                  icon-name="utility:info_alt"
+                  size="x-small"
+                ></lightning-icon>
+                <span
+                  >Evaluated against delivery SLA and courier milestones.</span
+                >
+              </div>
+            </div>
+
+            <!-- Shipment Overview Details -->
+            <div class="panel-section">
+              <h4 class="section-label">Shipment Information</h4>
+              <dl class="panel-meta-list">
+                <div class="meta-row">
+                  <dt>Shipment Reference</dt>
+                  <dd class="font-mono">{selectedShipment.Name}</dd>
+                </div>
+                <div class="meta-row">
+                  <dt>Carrier</dt>
+                  <dd class="text-uppercase">{selectedShipment.Carrier__c}</dd>
+                </div>
+                <div class="meta-row">
+                  <dt>Integration Provider</dt>
+                  <dd>{selectedShipment.Provider__c}</dd>
+                </div>
+                <div class="meta-row">
+                  <dt>Estimated Delivery</dt>
+                  <dd class="font-bold highlight-cyan">
+                    {selectedShipmentEta}
+                  </dd>
+                </div>
+                <div class="meta-row">
+                  <dt>Last Synchronized</dt>
+                  <dd>{selectedShipmentLastSynced}</dd>
+                </div>
+              </dl>
+            </div>
+
+            <!-- Customer Support Case Info -->
+            <div class="panel-section">
+              <h4 class="section-label">Linked Support Case</h4>
+              <template lwc:if={hasLinkedCase}>
+                <dl class="panel-meta-list">
+                  <div class="meta-row">
+                    <dt>Case Number</dt>
+                    <dd class="font-mono font-bold">#{linkedCaseNumber}</dd>
+                  </div>
+                  <div class="meta-row">
+                    <dt>Priority</dt>
+                    <dd>{linkedCasePriority}</dd>
+                  </div>
+                  <div class="meta-row full-width">
+                    <dt>Subject</dt>
+                    <dd>{linkedCaseSubject}</dd>
+                  </div>
+                  <div class="meta-row">
+                    <dt>Status</dt>
+                    <dd>{linkedCaseStatus}</dd>
+                  </div>
+                </dl>
+              </template>
+              <template lwc:else>
+                <div class="empty-case-box">
+                  <lightning-icon
+                    icon-name="utility:case"
+                    size="small"
+                  ></lightning-icon>
+                  <p class="empty-case-text">
+                    No support case linked to this shipment.
+                  </p>
+                </div>
+              </template>
+            </div>
+          </div>
+        </aside>
+      </template>
+    </div>
+  </div>
+</template>

@@ -17,6 +17,22 @@ const STATUS_LABELS = {
   unknown: "Unknown"
 };
 
+const STATUS_ORDER = [
+  { key: "pre_transit", label: "Pre-transit", tone: "violet" },
+  { key: "in_transit", label: "In Transit", tone: "cyan" },
+  { key: "out_for_delivery", label: "Out for Delivery", tone: "cyan" },
+  { key: "delivered", label: "Delivered", tone: "emerald" },
+  { key: "return_to_sender", label: "Returned", tone: "coral" },
+  { key: "failure", label: "Failure", tone: "coral" },
+  { key: "unknown", label: "Unknown", tone: "muted" }
+];
+
+const RISK_ORDER = [
+  { key: "On Track", label: "On Track", tone: "emerald" },
+  { key: "At Risk", label: "At Risk", tone: "amber" },
+  { key: "Delayed", label: "Delayed", tone: "coral" }
+];
+
 const JOURNEY_STAGES = [
   { key: "pre_transit", label: "Booked / Pre-transit" },
   { key: "in_transit", label: "In Transit" },
@@ -173,6 +189,64 @@ export default class ShipmentDashboard extends LightningElement {
       delayed: records.filter((record) => record.Risk_Level__c === "Delayed")
         .length
     };
+  }
+
+  get showOperations() {
+    return !this.isInitialLoading && !this.loadError && this.hasPopulation;
+  }
+
+  get healthLabel() {
+    const { total, onTrack } = this.kpis;
+    if (!total) {
+      return "No shipment population";
+    }
+    return `${Math.round((onTrack / total) * 100)}% of shipments are On Track`;
+  }
+
+  get statusBreakdown() {
+    return buildShareRows(this.allRecords, STATUS_ORDER, (record) =>
+      normalizeStatus(record.Status__c)
+    );
+  }
+
+  get riskBreakdown() {
+    return buildShareRows(
+      this.allRecords,
+      RISK_ORDER,
+      (record) => record.Risk_Level__c || "Unclassified"
+    );
+  }
+
+  get carrierBreakdown() {
+    const counts = new Map();
+    (this.allRecords || []).forEach((record) => {
+      const carrier = record.Carrier__c || "Unspecified";
+      counts.set(carrier, (counts.get(carrier) || 0) + 1);
+    });
+    const order = Array.from(counts.entries())
+      .sort(
+        (left, right) => right[1] - left[1] || left[0].localeCompare(right[0])
+      )
+      .map(([key]) => ({ key, label: key }));
+    return buildShareRows(
+      this.allRecords,
+      order,
+      (record) => record.Carrier__c || "Unspecified"
+    );
+  }
+
+  get recentActivity() {
+    return [...(this.allRecords || [])]
+      .sort((left, right) => {
+        const leftTime = Date.parse(left.Last_Synced__c || "") || 0;
+        const rightTime = Date.parse(right.Last_Synced__c || "") || 0;
+        if (rightTime !== leftTime) {
+          return rightTime - leftTime;
+        }
+        return String(right.Name || "").localeCompare(String(left.Name || ""));
+      })
+      .slice(0, 5)
+      .map((record) => this.toView(record));
   }
 
   get selectedRecord() {
@@ -685,6 +759,27 @@ function successMessage(updatedCount, skippedCount) {
       ? " 1 shipment was skipped because carrier or tracking code is missing."
       : ` ${skippedCount} shipments were skipped because carrier or tracking code is missing.`;
   return synced + skipped;
+}
+
+function buildShareRows(records, order, valueFor) {
+  const population = records || [];
+  const total = population.length || 1;
+  return order
+    .map((item) => {
+      const count = population.filter(
+        (record) => valueFor(record) === item.key
+      ).length;
+      const percent = population.length ? Math.round((count / total) * 100) : 0;
+      return {
+        key: item.key,
+        label: item.label,
+        count,
+        percent,
+        barStyle: `width: ${percent}%`,
+        barClass: `meter-fill meter-${item.tone || "cyan"}`
+      };
+    })
+    .filter((item) => item.count > 0);
 }
 
 function normalizeStatus(status) {

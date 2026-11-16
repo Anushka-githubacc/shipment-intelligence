@@ -1,0 +1,639 @@
+<template>
+  <div class="analytics-container">
+    <!-- Top Workspace Header -->
+    <header class="analytics-header">
+      <div class="header-text">
+        <h1 class="header-title">Analytics &amp; Reports</h1>
+        <p class="header-subtitle">
+          Executive operational KPIs, carrier performance benchmarks, delivery
+          trend forecasting, and SLA compliance analytics.
+        </p>
+      </div>
+      <div class="header-actions">
+        <lightning-button
+          label="Refresh"
+          icon-name="utility:refresh"
+          variant="neutral"
+          onclick={handleRefresh}
+          disabled={isRefreshing}
+          class="refresh-btn"
+        ></lightning-button>
+      </div>
+    </header>
+
+    <!-- Error Alert Banner -->
+    <template lwc:if={errorMessage}>
+      <div class="error-banner" role="alert">
+        <lightning-icon
+          icon-name="utility:error"
+          size="small"
+          class="error-icon"
+        ></lightning-icon>
+        <div class="error-text">
+          <div class="error-title">Unable to Load Analytics</div>
+          <div class="error-desc">{errorMessage}</div>
+        </div>
+        <lightning-button
+          label="Retry"
+          variant="neutral"
+          onclick={handleRefresh}
+        ></lightning-button>
+      </div>
+    </template>
+
+    <!-- Loading State Overlay -->
+    <template lwc:if={isLoading}>
+      <div class="loading-state">
+        <lightning-spinner
+          alternative-text="Loading analytics data"
+          size="medium"
+        ></lightning-spinner>
+        <p class="loading-text">
+          Aggregating logistics intelligence and performance metrics...
+        </p>
+      </div>
+    </template>
+
+    <template lwc:else>
+      <!-- Operational KPI Cards Grid -->
+      <section class="kpi-grid" aria-label="Operational KPI Summary">
+        <!-- Total Shipments -->
+        <div
+          class="kpi-card"
+          data-quick="All"
+          onclick={handleQuickFilter}
+          role="button"
+          tabindex="0"
+        >
+          <div class="kpi-top">
+            <span class="kpi-label">Total Shipments</span>
+            <lightning-icon
+              icon-name="utility:metrics"
+              size="small"
+              class="kpi-icon-neutral"
+            ></lightning-icon>
+          </div>
+          <div class="kpi-value">{totalShipmentsCount}</div>
+          <div class="kpi-sub">Total consignments in active scope</div>
+        </div>
+
+        <!-- Delivered Shipments -->
+        <div
+          class="kpi-card kpi-delivered"
+          data-quick="delivered"
+          onclick={handleQuickFilter}
+          role="button"
+          tabindex="0"
+        >
+          <div class="kpi-top">
+            <span class="kpi-label">Delivered</span>
+            <lightning-icon
+              icon-name="utility:success"
+              size="small"
+              class="kpi-icon-delivered"
+            ></lightning-icon>
+          </div>
+          <div class="kpi-value-row">
+            <span class="kpi-value">{deliveredCount}</span>
+            <span class="kpi-pct pct-delivered">{deliveredPercentage}%</span>
+          </div>
+          <div class="kpi-sub">Successfully fulfilled consignments</div>
+        </div>
+
+        <!-- In-Transit Shipments -->
+        <div
+          class="kpi-card kpi-transit"
+          data-quick="in_transit"
+          onclick={handleQuickFilter}
+          role="button"
+          tabindex="0"
+        >
+          <div class="kpi-top">
+            <span class="kpi-label">In Transit</span>
+            <lightning-icon
+              icon-name="utility:transit_shipment"
+              size="small"
+              class="kpi-icon-transit"
+            ></lightning-icon>
+          </div>
+          <div class="kpi-value-row">
+            <span class="kpi-value">{inTransitCount}</span>
+            <span class="kpi-pct pct-transit">{inTransitPercentage}%</span>
+          </div>
+          <div class="kpi-sub">Active consignments en route</div>
+        </div>
+
+        <!-- Delayed Shipments -->
+        <div
+          class="kpi-card kpi-delayed"
+          data-quick="delayed"
+          onclick={handleQuickFilter}
+          role="button"
+          tabindex="0"
+        >
+          <div class="kpi-top">
+            <span class="kpi-label">Delayed Shipments</span>
+            <lightning-icon
+              icon-name="utility:error"
+              size="small"
+              class="kpi-icon-delayed"
+            ></lightning-icon>
+          </div>
+          <div class="kpi-value-row">
+            <span class="kpi-value">{delayedCount}</span>
+            <span class="kpi-pct pct-delayed">{delayedPercentage}%</span>
+          </div>
+          <div class="kpi-sub">Past delivery SLA or carrier stalled</div>
+        </div>
+
+        <!-- On-Time Delivery Rate -->
+        <div class="kpi-card kpi-ontime">
+          <div class="kpi-top">
+            <span class="kpi-label">On-Time Delivery Rate</span>
+            <lightning-icon
+              icon-name="utility:clock"
+              size="small"
+              class="kpi-icon-ontime"
+            ></lightning-icon>
+          </div>
+          <div class="kpi-value-row">
+            <span class="kpi-value">{onTimeDeliveryRate}</span>
+            <template lwc:if={isOnTimeMetricUnavailable}>
+              <span class="kpi-tag tag-unavailable">Telemetry Pending</span>
+            </template>
+            <template lwc:else>
+              <span class="kpi-tag tag-verified">Verified</span>
+            </template>
+          </div>
+          <div class="kpi-sub">{onTimeSubtext}</div>
+        </div>
+      </section>
+
+      <!-- Filter & Search Toolbar Card -->
+      <section class="toolbar-card" aria-label="Analytics Filters Toolbar">
+        <div class="toolbar-grid">
+          <div class="toolbar-search">
+            <lightning-input
+              type="search"
+              label="Search Analytics"
+              variant="label-hidden"
+              placeholder="Search reference, tracking code, carrier, reason..."
+              value={localSearchTerm}
+              oninput={handleSearchInput}
+            ></lightning-input>
+          </div>
+
+          <div class="toolbar-dates">
+            <lightning-input
+              type="date"
+              label="From ETA"
+              value={startDate}
+              onchange={handleStartDateChange}
+              class="date-input"
+            ></lightning-input>
+            <lightning-input
+              type="date"
+              label="To ETA"
+              value={endDate}
+              onchange={handleEndDateChange}
+              class="date-input"
+            ></lightning-input>
+          </div>
+
+          <div class="toolbar-filters">
+            <lightning-combobox
+              label="Carrier"
+              variant="label-hidden"
+              value={carrierFilter}
+              options={carrierOptions}
+              onchange={handleCarrierChange}
+              class="filter-combobox"
+            ></lightning-combobox>
+
+            <lightning-combobox
+              label="Status"
+              variant="label-hidden"
+              value={statusFilter}
+              options={statusOptions}
+              onchange={handleStatusChange}
+              class="filter-combobox"
+            ></lightning-combobox>
+
+            <template lwc:if={hasActiveFilters}>
+              <lightning-button
+                label="Reset Filters"
+                variant="neutral"
+                icon-name="utility:clear"
+                onclick={handleResetFilters}
+                class="btn-reset"
+              ></lightning-button>
+            </template>
+          </div>
+        </div>
+      </section>
+
+      <!-- Two-Column Analytical Breakdown: Status & Risk -->
+      <div class="bento-row">
+        <!-- Status Distribution Card -->
+        <article class="bento-card status-card">
+          <div class="card-header">
+            <div class="card-header-icon icon-cyan">
+              <lightning-icon
+                icon-name="utility:graph"
+                size="small"
+              ></lightning-icon>
+            </div>
+            <div class="card-header-text">
+              <h2 class="card-title">Shipment Status Distribution</h2>
+              <p class="card-subtitle">
+                Volume breakdown across operational fulfillment stages
+              </p>
+            </div>
+          </div>
+
+          <div class="distribution-list">
+            <template for:each={statusDistribution} for:item="item">
+              <div key={item.key} class="dist-row">
+                <div class="dist-label-row">
+                  <span class="dist-label">{item.label}</span>
+                  <span class="dist-count"
+                    >{item.count}
+                    <span class="dist-pct">({item.percentage}%)</span></span
+                  >
+                </div>
+                <div class="dist-bar-track">
+                  <div class={item.colorClass} style={item.barStyle}></div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </article>
+
+        <!-- Risk Distribution Profile Card -->
+        <article class="bento-card risk-card">
+          <div class="card-header">
+            <div class="card-header-icon icon-violet">
+              <lightning-icon
+                icon-name="utility:shield"
+                size="small"
+              ></lightning-icon>
+            </div>
+            <div class="card-header-text">
+              <h2 class="card-title">Risk Assessment Profile</h2>
+              <p class="card-subtitle">
+                Algorithmic risk classification across active consignments
+              </p>
+            </div>
+          </div>
+
+          <template lwc:if={riskDistribution.hasData}>
+            <!-- Segmented Visual Bar -->
+            <div
+              class="segmented-bar"
+              aria-label="Risk Distribution Visualizer"
+            >
+              <div
+                class="segment seg-on-track"
+                style={riskDistribution.onTrackStyle}
+                title={riskDistribution.onTrackPercentage}
+              ></div>
+              <div
+                class="segment seg-at-risk"
+                style={riskDistribution.atRiskStyle}
+                title={riskDistribution.atRiskPercentage}
+              ></div>
+              <div
+                class="segment seg-delayed"
+                style={riskDistribution.delayedStyle}
+                title={riskDistribution.delayedPercentage}
+              ></div>
+            </div>
+
+            <!-- Risk Metric Pillars -->
+            <div class="risk-pillars">
+              <div class="pillar pillar-on-track">
+                <div class="pillar-label">On Track</div>
+                <div class="pillar-value">{riskDistribution.onTrackCount}</div>
+                <div class="pillar-pct">
+                  {riskDistribution.onTrackPercentage}%
+                </div>
+              </div>
+
+              <div class="pillar pillar-at-risk">
+                <div class="pillar-label">At Risk</div>
+                <div class="pillar-value">{riskDistribution.atRiskCount}</div>
+                <div class="pillar-pct">
+                  {riskDistribution.atRiskPercentage}%
+                </div>
+              </div>
+
+              <div class="pillar pillar-delayed">
+                <div class="pillar-label">Delayed</div>
+                <div class="pillar-value">{riskDistribution.delayedCount}</div>
+                <div class="pillar-pct">
+                  {riskDistribution.delayedPercentage}%
+                </div>
+              </div>
+            </div>
+          </template>
+          <template lwc:else>
+            <div class="empty-inline-state">
+              <p>No risk data available for current selection.</p>
+            </div>
+          </template>
+        </article>
+      </div>
+
+      <!-- Two-Column Analytical Breakdown: Carrier Performance & Delivery Trends -->
+      <div class="bento-row">
+        <!-- Carrier Performance Benchmarking -->
+        <article class="bento-card carrier-card">
+          <div class="card-header">
+            <div class="card-header-icon icon-blue">
+              <lightning-icon
+                icon-name="utility:company"
+                size="small"
+              ></lightning-icon>
+            </div>
+            <div class="card-header-text">
+              <h2 class="card-title">Carrier Performance Benchmarks</h2>
+              <p class="card-subtitle">
+                Volume handling, delivery success, and SLA compliance by
+                logistics partner
+              </p>
+            </div>
+          </div>
+
+          <template lwc:if={hasCarrierData}>
+            <div class="carrier-table-wrapper">
+              <table
+                class="carrier-table"
+                aria-label="Carrier Performance Table"
+              >
+                <thead>
+                  <tr>
+                    <th>Carrier</th>
+                    <th class="text-right">Total</th>
+                    <th class="text-right">Delivered</th>
+                    <th class="text-right">In Transit</th>
+                    <th class="text-right">SLA On Track</th>
+                    <th>Status Tier</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template for:each={carrierPerformanceList} for:item="c">
+                    <tr key={c.key}>
+                      <td class="carrier-name-cell">
+                        <span class="carrier-pill">{c.name}</span>
+                      </td>
+                      <td class="text-right font-semibold">{c.total}</td>
+                      <td class="text-right">
+                        {c.delivered}
+                        <span class="sub-pct">({c.deliveredPct}%)</span>
+                      </td>
+                      <td class="text-right">{c.inTransit}</td>
+                      <td class="text-right font-semibold text-emerald">
+                        {c.onTrackPct}%
+                      </td>
+                      <td>
+                        <span class={c.badgeClass}>{c.tier}</span>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </template>
+          <template lwc:else>
+            <div class="empty-inline-state">
+              <p>
+                No carrier performance records found matching active filters.
+              </p>
+            </div>
+          </template>
+        </article>
+
+        <!-- Delivery Trend Analysis Over Time -->
+        <article class="bento-card trend-card">
+          <div class="card-header">
+            <div class="card-header-icon icon-amber">
+              <lightning-icon
+                icon-name="utility:date_time"
+                size="small"
+              ></lightning-icon>
+            </div>
+            <div class="card-header-text">
+              <h2 class="card-title">Delivery Trend Timeline</h2>
+              <p class="card-subtitle">
+                Chronological consignment distribution by scheduled delivery
+                arrival (ETA)
+              </p>
+            </div>
+          </div>
+
+          <template lwc:if={deliveryTrends.hasTrends}>
+            <div class="trend-list">
+              <template for:each={deliveryTrends.items} for:item="item">
+                <div key={item.dateKey} class="trend-item">
+                  <div class="trend-item-header">
+                    <span class="trend-date font-semibold">{item.label}</span>
+                    <span class="trend-count">{item.total} consignments</span>
+                  </div>
+                  <div class="trend-bar-track">
+                    <div class="trend-bar-fill" style={item.barStyle}></div>
+                  </div>
+                  <div class="trend-chips">
+                    <template lwc:if={item.onTrack}>
+                      <span class="trend-chip chip-on-track"
+                        >{item.onTrack} On Track</span
+                      >
+                    </template>
+                    <template lwc:if={item.delayed}>
+                      <span class="trend-chip chip-delayed"
+                        >{item.delayed} Delayed</span
+                      >
+                    </template>
+                    <template lwc:if={item.delivered}>
+                      <span class="trend-chip chip-delivered"
+                        >{item.delivered} Delivered</span
+                      >
+                    </template>
+                  </div>
+                </div>
+              </template>
+
+              <template lwc:if={deliveryTrends.unscheduledCount}>
+                <div class="unscheduled-note">
+                  <lightning-icon
+                    icon-name="utility:info_alt"
+                    size="x-small"
+                  ></lightning-icon>
+                  <span
+                    >{deliveryTrends.unscheduledCount} active consignments have
+                    no carrier-reported ETA timestamp.</span
+                  >
+                </div>
+              </template>
+            </div>
+          </template>
+          <template lwc:else>
+            <div class="empty-inline-state">
+              <p>
+                No delivery schedule timestamp data available for the selected
+                filters.
+              </p>
+            </div>
+          </template>
+        </article>
+      </div>
+
+      <!-- Detailed Shipment Analytics Table Card -->
+      <article
+        class="table-card"
+        aria-label="Detailed Shipment Analytics Table"
+      >
+        <div class="table-header-row">
+          <div class="table-header-left">
+            <h2 class="card-title">Shipment Records Detail</h2>
+            <span class="table-badge">{totalShipmentsCount} records</span>
+          </div>
+        </div>
+
+        <template lwc:if={hasTableRows}>
+          <div class="table-responsive">
+            <table class="analytics-table">
+              <thead>
+                <tr>
+                  <th class="sortable" onclick={handleSort} data-field="Name">
+                    <span>Reference</span>
+                    <lightning-icon
+                      icon-name="utility:sort"
+                      size="xx-small"
+                    ></lightning-icon>
+                  </th>
+                  <th
+                    class="sortable"
+                    onclick={handleSort}
+                    data-field="Tracking_Code__c"
+                  >
+                    <span>Tracking Code</span>
+                    <lightning-icon
+                      icon-name="utility:sort"
+                      size="xx-small"
+                    ></lightning-icon>
+                  </th>
+                  <th
+                    class="sortable"
+                    onclick={handleSort}
+                    data-field="Carrier__c"
+                  >
+                    <span>Carrier</span>
+                    <lightning-icon
+                      icon-name="utility:sort"
+                      size="xx-small"
+                    ></lightning-icon>
+                  </th>
+                  <th
+                    class="sortable"
+                    onclick={handleSort}
+                    data-field="Status__c"
+                  >
+                    <span>Status</span>
+                    <lightning-icon
+                      icon-name="utility:sort"
+                      size="xx-small"
+                    ></lightning-icon>
+                  </th>
+                  <th
+                    class="sortable"
+                    onclick={handleSort}
+                    data-field="Risk_Level__c"
+                  >
+                    <span>Risk Level</span>
+                    <lightning-icon
+                      icon-name="utility:sort"
+                      size="xx-small"
+                    ></lightning-icon>
+                  </th>
+                  <th
+                    class="sortable"
+                    onclick={handleSort}
+                    data-field="Estimated_Delivery_Date__c"
+                  >
+                    <span>Estimated Delivery</span>
+                    <lightning-icon
+                      icon-name="utility:sort"
+                      size="xx-small"
+                    ></lightning-icon>
+                  </th>
+                  <th>Last Synced</th>
+                  <th>Linked Case</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template for:each={tableRows} for:item="row">
+                  <tr key={row.id}>
+                    <td class="font-semibold text-primary">{row.name}</td>
+                    <td class="font-mono text-cyan">{row.trackingCode}</td>
+                    <td>
+                      <span class="carrier-pill">{row.carrier}</span>
+                    </td>
+                    <td>
+                      <span class={row.statusBadgeClass}
+                        >{row.statusLabel}</span
+                      >
+                    </td>
+                    <td>
+                      <span class={row.riskBadgeClass}>{row.riskLevel}</span>
+                    </td>
+                    <td class="text-muted">{row.etaFormatted}</td>
+                    <td class="text-muted">{row.lastSyncedFormatted}</td>
+                    <td>
+                      <span class="case-tag">{row.caseNumber}</span>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </template>
+
+        <!-- Filtered Empty State -->
+        <template lwc:elseif={isFilteredEmpty}>
+          <div class="empty-search-state">
+            <lightning-icon
+              icon-name="utility:search"
+              size="medium"
+              class="empty-icon"
+            ></lightning-icon>
+            <h3 class="empty-title">No Shipments Found</h3>
+            <p class="empty-desc">
+              No shipment records matched your active filter or search criteria.
+            </p>
+            <lightning-button
+              label="Clear Filters"
+              variant="brand-outline"
+              onclick={handleResetFilters}
+              class="empty-btn"
+            ></lightning-button>
+          </div>
+        </template>
+
+        <!-- All Clear State -->
+        <template lwc:elseif={isAllClear}>
+          <div class="all-clear-state">
+            <lightning-icon
+              icon-name="utility:check"
+              size="medium"
+              class="all-clear-icon"
+            ></lightning-icon>
+            <h3 class="all-clear-title">No Records in System</h3>
+            <p class="all-clear-desc">
+              No shipment records were found in Salesforce.
+            </p>
+          </div>
+        </template>
+      </article>
+    </template>
+  </div>
+</template>

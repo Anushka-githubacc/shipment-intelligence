@@ -1,0 +1,356 @@
+<template>
+  <div class="intel-container">
+    <!-- Explorer Sidebar (Left) -->
+    <aside class="intel-explorer">
+      <div class="explorer-header">
+        <div class="explorer-title-row">
+          <h2 class="explorer-title">Shipment Explorer</h2>
+          <span class="count-pill">{shipmentsCount}</span>
+        </div>
+        <div class="search-box">
+          <lightning-input
+            type="search"
+            variant="label-hidden"
+            label="Search Shipments"
+            placeholder="Search tracking code, carrier..."
+            value={searchTerm}
+            onchange={handleSearchChange}
+            class="explorer-search"
+          ></lightning-input>
+        </div>
+        <div class="filters-row">
+          <lightning-combobox
+            variant="label-hidden"
+            label="Status Filter"
+            value={statusFilter}
+            options={statusOptions}
+            onchange={handleStatusChange}
+            class="filter-dropdown"
+          ></lightning-combobox>
+          <lightning-combobox
+            variant="label-hidden"
+            label="Risk Filter"
+            value={riskFilter}
+            options={riskOptions}
+            onchange={handleRiskChange}
+            class="filter-dropdown"
+          ></lightning-combobox>
+        </div>
+      </div>
+
+      <div class="explorer-body">
+        <template lwc:if={isLoadingList}>
+          <div class="loading-state">
+            <lightning-spinner
+              alternative-text="Loading shipments"
+              size="medium"
+            ></lightning-spinner>
+          </div>
+        </template>
+        <template lwc:elseif={hasListError}>
+          <div class="error-state">
+            <lightning-icon
+              icon-name="utility:error"
+              variant="error"
+              size="medium"
+            ></lightning-icon>
+            <p class="error-msg">{listError}</p>
+          </div>
+        </template>
+        <template lwc:elseif={hasNoShipments}>
+          <div class="empty-state">
+            <lightning-icon
+              icon-name="utility:search"
+              size="medium"
+            ></lightning-icon>
+            <p class="empty-title">No shipments found</p>
+            <p class="empty-subtitle">Try adjusting your search or filters</p>
+          </div>
+        </template>
+        <template lwc:else>
+          <ul class="shipment-cards-list">
+            <template for:each={formattedShipments} for:item="item">
+              <li
+                key={item.Id}
+                data-id={item.Id}
+                class={item.cardClass}
+                onclick={handleSelectShipment}
+              >
+                <div class="card-top">
+                  <span class="card-code">{item.Tracking_Code__c}</span>
+                  <span class={item.riskClass}>{item.Risk_Level__c}</span>
+                </div>
+                <div class="card-middle">
+                  <span class="carrier-tag">{item.Carrier__c}</span>
+                  <span class={item.statusClass}>{item.statusLabel}</span>
+                </div>
+                <div class="card-bottom">
+                  <template lwc:if={item.hasCase}>
+                    <span class="case-pill">Case #{item.caseNumber}</span>
+                  </template>
+                  <span class="eta-text">ETA: {item.formattedEta}</span>
+                </div>
+              </li>
+            </template>
+          </ul>
+        </template>
+      </div>
+    </aside>
+
+    <!-- Detail / Investigation Workspace (Right) -->
+    <main class="intel-workspace">
+      <template lwc:if={isLoadingDetail}>
+        <div class="loading-state-full">
+          <lightning-spinner
+            alternative-text="Loading details"
+            size="large"
+          ></lightning-spinner>
+        </div>
+      </template>
+      <template lwc:elseif={selectedShipment}>
+        <!-- Detail Header -->
+        <header class="detail-header bento-card">
+          <div class="detail-header-left">
+            <div class="badge-row">
+              <span class="carrier-badge">{selectedShipment.Carrier__c}</span>
+              <span class="provider-badge"
+                >Via {selectedShipment.Provider__c}</span
+              >
+              <span class={selectedShipmentRiskClass}
+                >{selectedShipment.Risk_Level__c}</span
+              >
+              <span class={selectedShipmentStatusClass}
+                >{selectedShipmentStatusLabel}</span
+              >
+            </div>
+            <h1 class="tracking-title">{selectedShipment.Tracking_Code__c}</h1>
+          </div>
+          <div class="detail-header-actions">
+            <lightning-button
+              label="Refresh Tracking"
+              icon-name="utility:refresh"
+              variant="neutral"
+              onclick={handleRefreshCurrent}
+              disabled={isRefreshing}
+              class="refresh-btn"
+            ></lightning-button>
+          </div>
+        </header>
+
+        <!-- Exception Alert Banner if return_to_sender, failure, unknown -->
+        <template lwc:if={isExceptionStatus}>
+          <div class={exceptionBannerClass}>
+            <lightning-icon
+              icon-name={exceptionIcon}
+              size="small"
+              variant={exceptionVariant}
+            ></lightning-icon>
+            <div class="exception-content">
+              <h3 class="exception-title">{exceptionTitle}</h3>
+              <p class="exception-desc">{exceptionDescription}</p>
+            </div>
+          </div>
+        </template>
+
+        <!-- Journey Stepper Bento -->
+        <section class="bento-card stepper-section">
+          <h2 class="section-heading">Delivery Journey</h2>
+          <div class="stepper-container">
+            <template for:each={journeySteps} for:item="step">
+              <div key={step.index} class={step.wrapperClass}>
+                <div class="step-indicator">
+                  <template lwc:if={step.isCompleted}>
+                    <lightning-icon
+                      icon-name="utility:check"
+                      size="x-small"
+                      class="check-icon"
+                    ></lightning-icon>
+                  </template>
+                  <template lwc:else>
+                    <span class="step-num">{step.index}</span>
+                  </template>
+                </div>
+                <div class="step-info">
+                  <span class="step-label">{step.label}</span>
+                  <span class="step-state">{step.stateLabel}</span>
+                </div>
+                <template lwc:if={step.hasConnector}>
+                  <div class={step.connectorClass}></div>
+                </template>
+              </div>
+            </template>
+          </div>
+        </section>
+
+        <!-- 2-Column Bento Grid for Metrics, Risk, Case -->
+        <div class="bento-row">
+          <!-- Key Facts Card -->
+          <section class="bento-card metric-card">
+            <h2 class="section-heading">Shipment Overview</h2>
+            <dl class="meta-grid">
+              <div class="meta-item">
+                <dt class="meta-label">Estimated Delivery</dt>
+                <dd class="meta-val highlight-val">
+                  {detailEstimatedDelivery}
+                </dd>
+              </div>
+              <div class="meta-item">
+                <dt class="meta-label">Actual Delivery</dt>
+                <dd class="meta-val">{detailActualDelivery}</dd>
+              </div>
+              <div class="meta-item">
+                <dt class="meta-label">Last Synchronized</dt>
+                <dd class="meta-val">{detailLastSynced}</dd>
+              </div>
+              <div class="meta-item">
+                <dt class="meta-label">Carrier</dt>
+                <dd class="meta-val">{selectedShipment.Carrier__c}</dd>
+              </div>
+              <div class="meta-item">
+                <dt class="meta-label">Integration Provider</dt>
+                <dd class="meta-val">{selectedShipment.Provider__c}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <!-- Risk & Delay Intelligence Card -->
+          <section class="bento-card risk-card">
+            <h2 class="section-heading">Risk & Delay Intelligence</h2>
+            <div class="risk-body">
+              <div class="risk-badge-row">
+                <span class={selectedShipmentRiskClass}
+                  >{selectedShipment.Risk_Level__c}</span
+                >
+              </div>
+              <p class="risk-reason-text">{riskReasonExplanation}</p>
+              <div class="risk-audit-info">
+                <lightning-icon
+                  icon-name="utility:info_alt"
+                  size="x-small"
+                ></lightning-icon>
+                <span>Rule-based SLA and transit milestone assessment.</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Linked Case Card -->
+          <section class="bento-card case-card">
+            <h2 class="section-heading">Customer Support Case</h2>
+            <template lwc:if={hasLinkedCase}>
+              <dl class="meta-grid">
+                <div class="meta-item">
+                  <dt class="meta-label">Case Number</dt>
+                  <dd class="meta-val">
+                    <a
+                      href={caseUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="case-link"
+                    >
+                      #{linkedCaseNumber}
+                    </a>
+                  </dd>
+                </div>
+                <div class="meta-item">
+                  <dt class="meta-label">Priority</dt>
+                  <dd class="meta-val">
+                    <span class="priority-tag">{linkedCasePriority}</span>
+                  </dd>
+                </div>
+                <div class="meta-item span-two">
+                  <dt class="meta-label">Subject</dt>
+                  <dd class="meta-val">{linkedCaseSubject}</dd>
+                </div>
+                <div class="meta-item">
+                  <dt class="meta-label">Status</dt>
+                  <dd class="meta-val">{linkedCaseStatus}</dd>
+                </div>
+              </dl>
+            </template>
+            <template lwc:else>
+              <div class="empty-case-box">
+                <lightning-icon
+                  icon-name="utility:case"
+                  size="small"
+                ></lightning-icon>
+                <p class="empty-case-title">No Linked Support Case</p>
+                <p class="empty-case-desc">
+                  This shipment is currently not associated with a customer
+                  support case.
+                </p>
+              </div>
+            </template>
+          </section>
+        </div>
+
+        <!-- Event Milestones Timeline Bento -->
+        <section class="bento-card timeline-section">
+          <div class="timeline-header-row">
+            <h2 class="section-heading">Milestone Event History</h2>
+            <span class="count-pill">{eventsCount}</span>
+          </div>
+
+          <template lwc:if={isLoadingEvents}>
+            <div class="loading-state">
+              <lightning-spinner
+                alternative-text="Loading events"
+                size="small"
+              ></lightning-spinner>
+            </div>
+          </template>
+          <template lwc:elseif={hasEvents}>
+            <ol class="timeline-list">
+              <template for:each={formattedEvents} for:item="evt">
+                <li key={evt.Id} class="timeline-entry">
+                  <div class="timeline-dot"></div>
+                  <div class="timeline-entry-content">
+                    <div class="timeline-entry-top">
+                      <span class={evt.statusClass}>{evt.statusLabel}</span>
+                      <time class="timeline-time">{evt.formattedDate}</time>
+                    </div>
+                    <p class="timeline-desc">{evt.description}</p>
+                    <template lwc:if={evt.hasLocation}>
+                      <div class="timeline-loc">
+                        <lightning-icon
+                          icon-name="utility:checkin"
+                          size="x-small"
+                        ></lightning-icon>
+                        <span>{evt.location}</span>
+                      </div>
+                    </template>
+                  </div>
+                </li>
+              </template>
+            </ol>
+          </template>
+          <template lwc:else>
+            <div class="empty-timeline-box">
+              <lightning-icon
+                icon-name="utility:trail"
+                size="medium"
+              ></lightning-icon>
+              <p class="empty-timeline-title">No Tracking Events Recorded</p>
+              <p class="empty-timeline-desc">
+                This shipment has not recorded any tracking milestone events
+                yet, or provider event data is pending synchronization.
+              </p>
+            </div>
+          </template>
+        </section>
+      </template>
+      <template lwc:else>
+        <div class="empty-selection-box">
+          <lightning-icon
+            icon-name="utility:preview"
+            size="large"
+          ></lightning-icon>
+          <h2 class="empty-selection-title">Select a Shipment</h2>
+          <p class="empty-selection-desc">
+            Choose a shipment from the explorer on the left to inspect tracking
+            history, delivery progress, and risk telemetry.
+          </p>
+        </div>
+      </template>
+    </main>
+  </div>
+</template>

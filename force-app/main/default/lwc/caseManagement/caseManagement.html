@@ -1,0 +1,786 @@
+<template>
+  <div class="case-container">
+    <!-- Top Workspace Header -->
+    <header class="case-header">
+      <div class="header-text">
+        <h1 class="header-title">Case Management</h1>
+        <p class="header-subtitle">
+          Customer support case triage, shipment resolution pipeline, and CRM
+          tracking escalation.
+        </p>
+      </div>
+      <div class="header-actions">
+        <lightning-button
+          label="Refresh"
+          icon-name="utility:refresh"
+          variant="neutral"
+          onclick={handleRefresh}
+          disabled={isRefreshing}
+          class="refresh-btn"
+        ></lightning-button>
+      </div>
+    </header>
+
+    <!-- Error Alert Banner -->
+    <template lwc:if={errorMessage}>
+      <div class="error-banner" role="alert">
+        <lightning-icon
+          icon-name="utility:error"
+          size="small"
+          class="error-icon"
+        ></lightning-icon>
+        <div class="error-text">
+          <div class="error-title">Unable to Load Support Cases</div>
+          <div class="error-desc">{errorMessage}</div>
+        </div>
+        <lightning-button
+          label="Retry"
+          variant="neutral"
+          onclick={handleRefresh}
+        ></lightning-button>
+      </div>
+    </template>
+
+    <!-- Loading State Overlay -->
+    <template lwc:if={isLoading}>
+      <div class="loading-state">
+        <lightning-spinner
+          alternative-text="Loading case records"
+          size="medium"
+        ></lightning-spinner>
+        <p class="loading-text">
+          Loading shipment-related customer support cases...
+        </p>
+      </div>
+    </template>
+
+    <template lwc:else>
+      <!-- Case KPIs Dashboard Grid -->
+      <section class="kpi-grid" aria-label="Support Case Metrics Summary">
+        <!-- Total Shipment Cases -->
+        <div
+          class="kpi-card"
+          data-quick="All"
+          onclick={handleQuickFilter}
+          role="button"
+          tabindex="0"
+        >
+          <div class="kpi-top">
+            <span class="kpi-label">Total Cases</span>
+            <lightning-icon
+              icon-name="utility:case"
+              size="small"
+              class="kpi-icon-cyan"
+            ></lightning-icon>
+          </div>
+          <div class="kpi-value">{totalCasesCount}</div>
+          <div class="kpi-sub">Shipment-linked customer cases</div>
+        </div>
+
+        <!-- Open Cases -->
+        <div
+          class="kpi-card kpi-open"
+          data-quick="open"
+          onclick={handleQuickFilter}
+          role="button"
+          tabindex="0"
+        >
+          <div class="kpi-top">
+            <span class="kpi-label">Open Cases</span>
+            <lightning-icon
+              icon-name="utility:new"
+              size="small"
+              class="kpi-icon-blue"
+            ></lightning-icon>
+          </div>
+          <div class="kpi-value-row">
+            <span class="kpi-value">{openCasesCount}</span>
+            <span class="kpi-tag tag-new">Awaiting Review</span>
+          </div>
+          <div class="kpi-sub">New customer inquiries</div>
+        </div>
+
+        <!-- In-Progress Cases -->
+        <div
+          class="kpi-card kpi-working"
+          data-quick="working"
+          onclick={handleQuickFilter}
+          role="button"
+          tabindex="0"
+        >
+          <div class="kpi-top">
+            <span class="kpi-label">In Progress</span>
+            <lightning-icon
+              icon-name="utility:in_progress"
+              size="small"
+              class="kpi-icon-amber"
+            ></lightning-icon>
+          </div>
+          <div class="kpi-value-row">
+            <span class="kpi-value">{inProgressCasesCount}</span>
+            <span class="kpi-tag tag-working">Investigating</span>
+          </div>
+          <div class="kpi-sub">Active support investigations</div>
+        </div>
+
+        <!-- Closed Cases -->
+        <div
+          class="kpi-card kpi-closed"
+          data-quick="closed"
+          onclick={handleQuickFilter}
+          role="button"
+          tabindex="0"
+        >
+          <div class="kpi-top">
+            <span class="kpi-label">Closed Cases</span>
+            <lightning-icon
+              icon-name="utility:success"
+              size="small"
+              class="kpi-icon-emerald"
+            ></lightning-icon>
+          </div>
+          <div class="kpi-value-row">
+            <span class="kpi-value">{closedCasesCount}</span>
+            <span class="kpi-tag tag-closed">Resolved</span>
+          </div>
+          <div class="kpi-sub">Successfully resolved inquiries</div>
+        </div>
+
+        <!-- High-Priority Cases -->
+        <div
+          class="kpi-card kpi-high"
+          data-quick="high"
+          onclick={handleQuickFilter}
+          role="button"
+          tabindex="0"
+        >
+          <div class="kpi-top">
+            <span class="kpi-label">High Priority</span>
+            <lightning-icon
+              icon-name="utility:priority"
+              size="small"
+              class="kpi-icon-coral"
+            ></lightning-icon>
+          </div>
+          <div class="kpi-value-row">
+            <span class="kpi-value">{highPriorityCasesCount}</span>
+            <span class="kpi-tag tag-high">Urgent</span>
+          </div>
+          <div class="kpi-sub">Critical courier escalations</div>
+        </div>
+      </section>
+
+      <!-- Case Explorer Filter Toolbar -->
+      <section class="toolbar-card" aria-label="Case Explorer Filters">
+        <div class="toolbar-grid">
+          <div class="toolbar-search">
+            <lightning-input
+              type="search"
+              label="Search Cases"
+              variant="label-hidden"
+              placeholder="Search case #, subject, owner, tracking code, carrier..."
+              value={localSearchTerm}
+              oninput={handleSearchInput}
+            ></lightning-input>
+          </div>
+
+          <div class="toolbar-filters">
+            <lightning-combobox
+              label="Status"
+              variant="label-hidden"
+              value={statusFilter}
+              options={statusOptions}
+              onchange={handleStatusFilterChange}
+              class="filter-combobox"
+            ></lightning-combobox>
+
+            <lightning-combobox
+              label="Priority"
+              variant="label-hidden"
+              value={priorityFilter}
+              options={priorityOptions}
+              onchange={handlePriorityFilterChange}
+              class="filter-combobox"
+            ></lightning-combobox>
+
+            <lightning-combobox
+              label="Origin"
+              variant="label-hidden"
+              value={originFilter}
+              options={originOptions}
+              onchange={handleOriginFilterChange}
+              class="filter-combobox"
+            ></lightning-combobox>
+
+            <template lwc:if={hasActiveFilters}>
+              <lightning-button
+                label="Reset Filters"
+                variant="neutral"
+                icon-name="utility:clear"
+                onclick={handleResetFilters}
+                class="btn-reset"
+              ></lightning-button>
+            </template>
+          </div>
+        </div>
+      </section>
+
+      <!-- Two-Column Case Workspace: Case Explorer Table + Inspection Panel -->
+      <div class="case-workspace-layout">
+        <!-- Left Column: Case Explorer Table -->
+        <div class="case-explorer-column">
+          <article class="explorer-card">
+            <div class="explorer-header">
+              <div class="explorer-title-row">
+                <h2 class="card-title">Case Explorer</h2>
+                <span class="count-badge">{filteredCases.length} cases</span>
+              </div>
+              <p class="card-subtitle">
+                Select a support case to inspect linked consignment telemetry
+                and triage
+              </p>
+            </div>
+
+            <template lwc:if={hasTableRows}>
+              <div class="table-responsive">
+                <table
+                  class="case-table"
+                  aria-label="Customer Support Cases Table"
+                >
+                  <thead>
+                    <tr>
+                      <th>Case #</th>
+                      <th>Subject</th>
+                      <th>Related Shipment</th>
+                      <th>Priority</th>
+                      <th>Status</th>
+                      <th>Owner</th>
+                      <th>Origin</th>
+                      <th>Created</th>
+                      <th>Modified</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <template for:each={tableRows} for:item="row">
+                      <tr
+                        key={row.id}
+                        class={row.rowClass}
+                        data-case-id={row.id}
+                        onclick={handleSelectCase}
+                      >
+                        <td class="font-semibold text-primary">
+                          {row.caseNumber}
+                        </td>
+                        <td class="subject-cell">{row.subject}</td>
+                        <td>
+                          <template lwc:if={row.hasShipment}>
+                            <div class="shipment-cell">
+                              <span class="tracking-pill"
+                                >{row.shipmentTrackingCode}</span
+                              >
+                              <span class="carrier-tag"
+                                >{row.shipmentCarrier}</span
+                              >
+                            </div>
+                          </template>
+                          <template lwc:else>
+                            <span class="text-muted">None</span>
+                          </template>
+                        </td>
+                        <td>
+                          <span class={row.priorityBadgeClass}
+                            >{row.priority}</span
+                          >
+                        </td>
+                        <td>
+                          <span class={row.statusBadgeClass}>{row.status}</span>
+                        </td>
+                        <td class="text-muted">{row.ownerName}</td>
+                        <td class="text-muted">{row.origin}</td>
+                        <td class="text-muted">{row.createdDateFormatted}</td>
+                        <td class="text-muted">
+                          {row.lastModifiedDateFormatted}
+                        </td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </template>
+
+            <!-- Filtered Empty State -->
+            <template lwc:elseif={isFilteredEmpty}>
+              <div class="empty-search-state">
+                <lightning-icon
+                  icon-name="utility:search"
+                  size="medium"
+                  class="empty-icon"
+                ></lightning-icon>
+                <h3 class="empty-title">No Matching Cases Found</h3>
+                <p class="empty-desc">
+                  No support cases match the active filter or search criteria.
+                </p>
+                <lightning-button
+                  label="Clear Filters"
+                  variant="brand-outline"
+                  onclick={handleResetFilters}
+                ></lightning-button>
+              </div>
+            </template>
+
+            <!-- All-Clear Empty State -->
+            <template lwc:elseif={isAllClear}>
+              <div class="all-clear-state">
+                <lightning-icon
+                  icon-name="utility:check"
+                  size="medium"
+                  class="all-clear-icon"
+                ></lightning-icon>
+                <h3 class="all-clear-title">No Shipment Cases</h3>
+                <p class="all-clear-desc">
+                  No shipment-linked customer cases were found in Salesforce.
+                </p>
+              </div>
+            </template>
+          </article>
+        </div>
+
+        <!-- Right Column: Case Inspection & Actions Panel -->
+        <div class="case-inspection-column">
+          <template lwc:if={hasSelectedCase}>
+            <article class="inspection-panel">
+              <!-- Inspection Header -->
+              <div class="panel-header">
+                <div class="panel-header-left">
+                  <span class="panel-tag">Case Details</span>
+                  <h3 class="panel-title">{selectedCase.CaseNumber}</h3>
+                </div>
+                <div class="panel-header-right">
+                  <span class="owner-pill font-semibold"
+                    >Owner: {selectedCaseOwnerName}</span
+                  >
+                  <lightning-button
+                    label="Assign to Me"
+                    icon-name="utility:user"
+                    variant="neutral"
+                    onclick={handleAssignToMe}
+                    disabled={isAssigning}
+                    class="btn-assign-me"
+                  ></lightning-button>
+                </div>
+              </div>
+
+              <!-- Success / Error Alerts for Updates -->
+              <template lwc:if={saveSuccessMessage}>
+                <div class="alert-success" role="status">
+                  <lightning-icon
+                    icon-name="utility:success"
+                    size="x-small"
+                    class="alert-icon-success"
+                  ></lightning-icon>
+                  <span>{saveSuccessMessage}</span>
+                </div>
+              </template>
+              <template lwc:if={saveErrorMessage}>
+                <div class="alert-error" role="alert">
+                  <lightning-icon
+                    icon-name="utility:error"
+                    size="x-small"
+                    class="alert-icon-error"
+                  ></lightning-icon>
+                  <span>{saveErrorMessage}</span>
+                </div>
+              </template>
+
+              <!-- Case Actions / Edit Form -->
+              <div class="panel-section">
+                <h4 class="section-title">Case Actions &amp; Triage</h4>
+                <div class="edit-form-grid">
+                  <div class="form-field full-width">
+                    <lightning-input
+                      label="Subject"
+                      value={editSubject}
+                      onchange={handleEditSubjectChange}
+                    ></lightning-input>
+                  </div>
+                  <div class="form-field half-width">
+                    <lightning-combobox
+                      label="Status"
+                      value={editStatus}
+                      options={editStatusOptions}
+                      onchange={handleEditStatusChange}
+                    ></lightning-combobox>
+                  </div>
+                  <div class="form-field half-width">
+                    <lightning-combobox
+                      label="Priority"
+                      value={editPriority}
+                      options={editPriorityOptions}
+                      onchange={handleEditPriorityChange}
+                    ></lightning-combobox>
+                  </div>
+                  <div class="form-field full-width">
+                    <lightning-textarea
+                      label="Description"
+                      value={editDescription}
+                      onchange={handleEditDescriptionChange}
+                    ></lightning-textarea>
+                  </div>
+                </div>
+
+                <div class="form-actions">
+                  <lightning-button
+                    label="Save Changes"
+                    variant="brand"
+                    icon-name="utility:save"
+                    onclick={handleSaveCase}
+                    disabled={isSaving}
+                    class="btn-save"
+                  ></lightning-button>
+                  <lightning-button
+                    label="Cancel"
+                    variant="neutral"
+                    onclick={handleCancelEdit}
+                    disabled={isSaving}
+                  ></lightning-button>
+                </div>
+              </div>
+
+              <!-- Related Shipment Information -->
+              <div class="panel-section">
+                <h4 class="section-title">Linked Shipment Telemetry</h4>
+                <template lwc:if={selectedShipment}>
+                  <div class="shipment-summary-box">
+                    <div class="shipment-metric-grid">
+                      <div class="metric-cell">
+                        <div class="metric-label">Shipment Ref</div>
+                        <div class="metric-val font-semibold">
+                          {selectedShipment.Name}
+                        </div>
+                      </div>
+                      <div class="metric-cell">
+                        <div class="metric-label">Tracking Code</div>
+                        <div class="metric-val font-mono text-cyan">
+                          {selectedShipment.Tracking_Code__c}
+                        </div>
+                      </div>
+                      <div class="metric-cell">
+                        <div class="metric-label">Carrier</div>
+                        <div class="metric-val">
+                          {selectedShipmentCarrierFormatted}
+                        </div>
+                      </div>
+                      <div class="metric-cell">
+                        <div class="metric-label">ETA</div>
+                        <div class="metric-val">
+                          {selectedShipmentEtaFormatted}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="shipment-badges-row">
+                      <span class={selectedShipmentStatusClass}
+                        >{selectedShipment.Status__c}</span
+                      >
+                      <span class={selectedShipmentRiskClass}
+                        >{selectedShipment.Risk_Level__c}</span
+                      >
+                    </div>
+
+                    <template lwc:if={selectedShipment.Risk_Reason__c}>
+                      <div class="risk-reason-box">
+                        <lightning-icon
+                          icon-name="utility:info_alt"
+                          size="x-small"
+                        ></lightning-icon>
+                        <span>{selectedShipment.Risk_Reason__c}</span>
+                      </div>
+                    </template>
+                  </div>
+
+                  <!-- Consignment Operational Resolution Block in Case Management -->
+                  <div class="shipment-resolution-block">
+                    <h5 class="resolution-heading">
+                      Consignment Operational Resolution
+                    </h5>
+
+                    <template lwc:if={shipmentResolutionSuccessMessage}>
+                      <div class="alert-success-small" role="status">
+                        <lightning-icon
+                          icon-name="utility:success"
+                          size="x-small"
+                          variant="success"
+                        ></lightning-icon>
+                        <span>{shipmentResolutionSuccessMessage}</span>
+                      </div>
+                    </template>
+                    <template lwc:if={shipmentResolutionErrorMessage}>
+                      <div class="alert-error-small" role="alert">
+                        <lightning-icon
+                          icon-name="utility:error"
+                          size="x-small"
+                          variant="error"
+                        ></lightning-icon>
+                        <span>{shipmentResolutionErrorMessage}</span>
+                      </div>
+                    </template>
+
+                    <div class="res-edit-grid">
+                      <div class="res-field">
+                        <lightning-combobox
+                          label="Resolution Status"
+                          value={shipmentResolutionStatus}
+                          options={resolutionFormOptions}
+                          onchange={handleShipmentResolutionStatusChange}
+                        ></lightning-combobox>
+                      </div>
+                      <div class="res-field">
+                        <lightning-textarea
+                          label="Resolution Notes"
+                          value={shipmentResolutionNotes}
+                          onchange={handleShipmentResolutionNotesChange}
+                        ></lightning-textarea>
+                      </div>
+                    </div>
+                    <div class="res-action-btn">
+                      <lightning-button
+                        label="Update Shipment Resolution"
+                        icon-name="utility:save"
+                        variant="brand"
+                        onclick={handleSaveShipmentResolution}
+                        disabled={isSavingShipmentResolution}
+                      ></lightning-button>
+                    </div>
+                  </div>
+
+                  <!-- Tracking Milestones Timeline -->
+                  <div class="milestones-container">
+                    <h5 class="milestones-heading">
+                      Milestone Tracking Events
+                    </h5>
+                    <template lwc:if={hasTrackingMilestones}>
+                      <div class="milestone-timeline">
+                        <template for:each={trackingMilestones} for:item="evt">
+                          <div key={evt.id} class="timeline-entry">
+                            <div class="timeline-bullet"></div>
+                            <div class="timeline-content">
+                              <div class="timeline-header">
+                                <span class={evt.statusBadgeClass}
+                                  >{evt.status}</span
+                                >
+                                <span class="timeline-date"
+                                  >{evt.dateFormatted}</span
+                                >
+                              </div>
+                              <div class="timeline-desc">{evt.description}</div>
+                              <div class="timeline-location font-semibold">
+                                {evt.location}
+                              </div>
+                            </div>
+                          </div>
+                        </template>
+                      </div>
+                    </template>
+                    <template lwc:else>
+                      <div class="no-events-note">
+                        <lightning-icon
+                          icon-name="utility:info"
+                          size="x-small"
+                        ></lightning-icon>
+                        <span
+                          >No tracking milestone events recorded for this
+                          consignment yet.</span
+                        >
+                      </div>
+                    </template>
+                  </div>
+                </template>
+                <template lwc:else>
+                  <div class="no-shipment-box">
+                    <lightning-icon
+                      icon-name="utility:warning"
+                      size="small"
+                      class="no-shipment-icon"
+                    ></lightning-icon>
+                    <p>No shipment records are linked to this Case.</p>
+                  </div>
+                </template>
+              </div>
+
+              <!-- Customer Communication Section -->
+              <div class="panel-section customer-comm-section">
+                <div class="section-header-row">
+                  <h4 class="section-title">Customer Communication</h4>
+                  <template lwc:if={hasSelectedShipment}>
+                    <lightning-button
+                      label="Draft Customer Update"
+                      icon-name="utility:email"
+                      variant="brand-outline"
+                      onclick={handleDraftCustomerUpdate}
+                      disabled={isDraftingCustomerUpdate}
+                      class="btn-draft-update"
+                    ></lightning-button>
+                  </template>
+                </div>
+
+                <!-- Drafting Spinner Overlay -->
+                <template lwc:if={isDraftingCustomerUpdate}>
+                  <div class="draft-loading-state">
+                    <lightning-spinner
+                      alternative-text="Generating customer communication draft"
+                      size="small"
+                    ></lightning-spinner>
+                    <span class="draft-loading-text"
+                      >Generating customer shipment update...</span
+                    >
+                  </div>
+                </template>
+
+                <!-- Customer Communication Error Alert -->
+                <template lwc:if={customerCommErrorMessage}>
+                  <div class="alert-error-small" role="alert">
+                    <lightning-icon
+                      icon-name="utility:error"
+                      size="x-small"
+                      variant="error"
+                    ></lightning-icon>
+                    <span>{customerCommErrorMessage}</span>
+                  </div>
+                </template>
+
+                <!-- Draft Content Area -->
+                <template lwc:if={customerUpdateDraft}>
+                  <div class="customer-draft-container">
+                    <!-- Recipient Resolution Pill / Info Box -->
+                    <div class="recipient-info-box">
+                      <div class="recipient-row">
+                        <span class="recipient-label">Recipient:</span>
+                        <span class="recipient-value font-semibold"
+                          >{recipientDisplayName}</span
+                        >
+                        <template lwc:if={hasRecipientEmail}>
+                          <span class="recipient-email font-mono"
+                            >&lt;{recipientEmail}&gt;</span
+                          >
+                          <span class="recipient-source-tag"
+                            >{recipientSourceLabel}</span
+                          >
+                        </template>
+                        <template lwc:else>
+                          <span class="recipient-missing-tag"
+                            >No Email on Record</span
+                          >
+                        </template>
+                      </div>
+                      <template lwc:if={hasRecipientEmail}>
+                        <div class="recipient-verified-note">
+                          <lightning-icon
+                            icon-name="utility:check"
+                            size="x-small"
+                            class="icon-verified"
+                          ></lightning-icon>
+                          <span>Verified Salesforce email destination</span>
+                        </div>
+                      </template>
+                      <template lwc:else>
+                        <div class="recipient-warning-note" role="note">
+                          <lightning-icon
+                            icon-name="utility:warning"
+                            size="x-small"
+                            class="icon-warning"
+                          ></lightning-icon>
+                          <span
+                            >No customer email address found on this Case or
+                            Contact record. Add an email address to enable Gmail
+                            dispatch.</span
+                          >
+                        </div>
+                      </template>
+                    </div>
+
+                    <!-- Subject Field -->
+                    <div class="form-field full-width">
+                      <lightning-input
+                        label="Subject Line"
+                        value={customerUpdateSubject}
+                        onchange={handleCustomerUpdateSubjectChange}
+                      ></lightning-input>
+                    </div>
+
+                    <!-- Editable Body Textarea -->
+                    <div class="form-field full-width">
+                      <lightning-textarea
+                        label="Message Body (Editable)"
+                        value={customerUpdateDraft}
+                        onchange={handleCustomerUpdateDraftChange}
+                        class="comm-textarea"
+                      ></lightning-textarea>
+                    </div>
+
+                    <p class="comm-review-note">
+                      Review and edit the draft above before dispatch. Automated
+                      sending is disabled; customer communications require human
+                      review.
+                    </p>
+
+                    <!-- Action Buttons -->
+                    <div class="comm-actions-row">
+                      <lightning-button
+                        label="Open in Gmail"
+                        icon-name="utility:send"
+                        variant="brand"
+                        onclick={handleOpenInGmail}
+                        disabled={isGmailDisabled}
+                        class="btn-open-gmail"
+                      ></lightning-button>
+                      <lightning-button
+                        label="Clear Draft"
+                        variant="neutral"
+                        onclick={handleClearCustomerDraft}
+                        class="btn-clear-draft"
+                      ></lightning-button>
+                    </div>
+                  </div>
+                </template>
+                <template lwc:elseif={hasSelectedShipment}>
+                  <div class="draft-initial-state">
+                    <lightning-icon
+                      icon-name="utility:email"
+                      size="small"
+                      class="initial-comm-icon"
+                    ></lightning-icon>
+                    <p class="initial-comm-text">
+                      Click "Draft Customer Update" to generate a personalized,
+                      telemetry-backed shipment update for human review.
+                    </p>
+                  </div>
+                </template>
+                <template lwc:else>
+                  <div class="draft-initial-state">
+                    <p class="initial-comm-text text-muted">
+                      Customer updates require a linked shipment.
+                    </p>
+                  </div>
+                </template>
+              </div>
+            </article>
+          </template>
+          <template lwc:else>
+            <article class="inspection-empty">
+              <lightning-icon
+                icon-name="utility:touch_action"
+                size="medium"
+                class="empty-icon"
+              ></lightning-icon>
+              <h4 class="empty-title">Select a Support Case</h4>
+              <p class="empty-desc">
+                Choose a case from the explorer table to inspect linked shipment
+                telemetry and perform triage actions.
+              </p>
+            </article>
+          </template>
+        </div>
+      </div>
+    </template>
+  </div>
+</template>

@@ -2,11 +2,12 @@
   <div class="dashboard">
     <header class="masthead">
       <div class="masthead-copy">
-        <p class="eyebrow">Logistics Intelligence Engine</p>
-        <h1>Shipment Dashboard</h1>
+        <p class="eyebrow">Control Tower</p>
+        <h1>Operational overview</h1>
         <p class="lede">
-          Live Salesforce shipments, delivery risk, and the current journey for
-          the selected record. Tracking synchronization uses Shippo.
+          Shipment health, risk, and journey progress from Salesforce records.
+          Tracking synchronization uses the Shippo provider. Carrier names on
+          synthetic records are not separate carrier API connections.
         </p>
       </div>
       <div class="masthead-actions">
@@ -85,6 +86,95 @@
         <p class="kpi-value" data-kpi-value="delayed">{kpis.delayed}</p>
       </article>
     </section>
+
+    <template lwc:if={showOperations}>
+      <section class="ops-grid" aria-label="Shipment health overview">
+        <article class="card ops-card">
+          <div class="card-heading">
+            <h2>Status breakdown</h2>
+            <p>{healthLabel}</p>
+          </div>
+          <ul class="meter-list">
+            <template for:each={statusBreakdown} for:item="item">
+              <li key={item.key} data-status-share={item.key}>
+                <div class="meter-meta">
+                  <span>{item.label}</span>
+                  <span>{item.count}</span>
+                </div>
+                <div class="meter-track">
+                  <span class={item.barClass} style={item.barStyle}></span>
+                </div>
+              </li>
+            </template>
+          </ul>
+        </article>
+
+        <article class="card ops-card">
+          <div class="card-heading">
+            <h2>Risk distribution</h2>
+            <p>Stored risk levels</p>
+          </div>
+          <ul class="meter-list">
+            <template for:each={riskBreakdown} for:item="item">
+              <li key={item.key} data-risk-share={item.key}>
+                <div class="meter-meta">
+                  <span>{item.label}</span>
+                  <span>{item.count}</span>
+                </div>
+                <div class="meter-track">
+                  <span class={item.barClass} style={item.barStyle}></span>
+                </div>
+              </li>
+            </template>
+          </ul>
+        </article>
+
+        <article class="card ops-card">
+          <div class="card-heading">
+            <h2>Carrier distribution</h2>
+            <p>Names on shipment records</p>
+          </div>
+          <ul class="meter-list">
+            <template for:each={carrierBreakdown} for:item="item">
+              <li key={item.key}>
+                <div class="meter-meta">
+                  <span>{item.label}</span>
+                  <span>{item.count}</span>
+                </div>
+                <div class="meter-track">
+                  <span class={item.barClass} style={item.barStyle}></span>
+                </div>
+              </li>
+            </template>
+          </ul>
+        </article>
+
+        <article class="card ops-card">
+          <div class="card-heading">
+            <h2>Recent activity</h2>
+            <p>Latest stored synchronization</p>
+          </div>
+          <ul class="activity-list">
+            <template for:each={recentActivity} for:item="shipment">
+              <li key={shipment.id}>
+                <button
+                  type="button"
+                  class="activity-item"
+                  data-id={shipment.id}
+                  onclick={handleSelect}
+                >
+                  <span class="activity-code">{shipment.trackingCode}</span>
+                  <span class="activity-meta">
+                    {shipment.carrier} · {shipment.statusLabel}
+                  </span>
+                  <span class={shipment.riskClass}>{shipment.riskLevel}</span>
+                </button>
+              </li>
+            </template>
+          </ul>
+        </article>
+      </section>
+    </template>
 
     <section class="toolbar card" aria-label="Shipment filters">
       <lightning-input

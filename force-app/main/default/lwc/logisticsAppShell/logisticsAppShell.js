@@ -5,49 +5,43 @@ const WORKSPACES = [
     id: "control-tower",
     label: "Control Tower",
     icon: "utility:dashboard",
-    isComingSoon: false,
     description:
-      "Live operations, delay risk intelligence, and interactive shipment journey tracking."
+      "Operational health, risk distribution, and the selected shipment journey."
   },
   {
     id: "shipment-intelligence",
     label: "Shipment Intelligence",
     icon: "utility:transit_shipment",
-    isComingSoon: true,
     description:
-      "Deep telemetry, multi-leg consignment tracking, and route-level operational visibility across global transit networks."
+      "Shipment investigation, journey progress, and recorded tracking events."
   },
   {
     id: "risk-intelligence",
     label: "Risk Intelligence",
     icon: "utility:shield",
-    isComingSoon: true,
     description:
-      "Predictive delay modelling, carrier SLA risk scoring, and weather-impact pattern forecasting."
+      "Rule-based delay risk, severity, and the reason each shipment needs attention."
   },
   {
     id: "exception-centre",
     label: "Exception Centre",
     icon: "utility:error",
-    isComingSoon: true,
     description:
-      "Automated NDR (Non-Delivery Report) triage, returned-to-sender workflows, and carrier escalation management."
+      "Failed, returned, delayed, and at-risk shipments with a human resolution workflow."
   },
   {
     id: "analytics-reports",
     label: "Analytics & Reports",
     icon: "utility:analytics",
-    isComingSoon: true,
     description:
-      "Executive KPI aggregations, carrier transit time benchmarks, and SLA compliance analytics."
+      "Status, risk, and carrier measures from stored shipment records."
   },
   {
     id: "case-management",
     label: "Case Management",
     icon: "utility:case",
-    isComingSoon: true,
     description:
-      "Automated customer communication drafts, Case-linked tracking, and CRM resolution pipelines."
+      "Case ownership, linked shipment context, and reviewed customer drafts."
   }
 ];
 
@@ -69,6 +63,26 @@ export default class LogisticsAppShell extends LightningElement {
 
   get isControlTowerActive() {
     return this.activeWorkspaceId === "control-tower";
+  }
+
+  get isShipmentIntelligenceActive() {
+    return this.activeWorkspaceId === "shipment-intelligence";
+  }
+
+  get isRiskIntelligenceActive() {
+    return this.activeWorkspaceId === "risk-intelligence";
+  }
+
+  get isExceptionCentreActive() {
+    return this.activeWorkspaceId === "exception-centre";
+  }
+
+  get isAnalyticsReportsActive() {
+    return this.activeWorkspaceId === "analytics-reports";
+  }
+
+  get isCaseManagementActive() {
+    return this.activeWorkspaceId === "case-management";
   }
 
   get currentWorkspace() {
@@ -115,9 +129,6 @@ export default class LogisticsAppShell extends LightningElement {
       if (isSelected) {
         buttonClass.push("is-active");
       }
-      if (ws.isComingSoon) {
-        buttonClass.push("is-coming-soon");
-      }
       return {
         ...ws,
         isSelected,
@@ -160,11 +171,6 @@ export default class LogisticsAppShell extends LightningElement {
     this.searchDebounceTimeout = setTimeout(() => {
       this.globalSearchTerm = rawValue;
       this.searchDebounceTimeout = null;
-
-      // If user searches while in a Coming Soon workspace, switch back to Control Tower
-      if (!this.isControlTowerActive && rawValue) {
-        this.activeWorkspaceId = "control-tower";
-      }
     }, 300);
   }
 
@@ -172,10 +178,34 @@ export default class LogisticsAppShell extends LightningElement {
     const dashboard = this.template.querySelector("c-shipment-dashboard");
     if (dashboard && typeof dashboard.refresh === "function") {
       dashboard.refresh();
+      return;
     }
-  }
-
-  handleReturnToControlTower() {
-    this.activeWorkspaceId = "control-tower";
+    const intelligence = this.template.querySelector("c-shipment-intelligence");
+    if (intelligence && typeof intelligence.handleRefresh === "function") {
+      intelligence.handleRefresh();
+      return;
+    }
+    const risk = this.template.querySelector("c-risk-intelligence");
+    if (risk && typeof risk.handleRefresh === "function") {
+      risk.handleRefresh();
+      return;
+    }
+    const exceptionCentre = this.template.querySelector("c-exception-centre");
+    if (
+      exceptionCentre &&
+      typeof exceptionCentre.handleRefresh === "function"
+    ) {
+      exceptionCentre.handleRefresh();
+      return;
+    }
+    const analytics = this.template.querySelector("c-analytics-reports");
+    if (analytics && typeof analytics.handleRefresh === "function") {
+      analytics.handleRefresh();
+      return;
+    }
+    const caseMgmt = this.template.querySelector("c-case-management");
+    if (caseMgmt && typeof caseMgmt.handleRefresh === "function") {
+      caseMgmt.handleRefresh();
+    }
   }
 }
