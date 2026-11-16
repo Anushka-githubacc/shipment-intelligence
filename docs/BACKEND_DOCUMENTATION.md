@@ -1,10 +1,10 @@
-# Logistics Intelligence Engine
+# Shipment Intelligence
 
 ## Backend Technical Documentation
 
 ### 1. Project Overview
 
-The Logistics Intelligence Engine is a Salesforce-based shipment tracking and delay intelligence application. It integrates with an external shipment tracking provider, retrieves shipment information, stores shipment records in Salesforce and evaluates delivery risk.
+Shipment Intelligence is a Salesforce-based shipment tracking and delay intelligence application. It integrates with an external shipment tracking provider, retrieves shipment information, stores shipment records in Salesforce and evaluates delivery risk.
 
 The backend is designed around a provider-adapter architecture so that additional logistics providers can be incorporated in the future.
 

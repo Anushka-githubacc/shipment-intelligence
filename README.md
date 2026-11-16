@@ -1,57 +1,89 @@
-# Salesforce DX Project
+# Shipment Intelligence
 
-Salesforce DX is a development approach that brings source-driven development, team collaboration, and continuous integration to the Salesforce Platform. Instead of working directly in an org through a web browser, you work with metadata as source files in a local DX project, track changes in version control, and deploy through automated processes.
+**Monitor. Predict. Investigate. Resolve.**
 
-This project template gets you started with the tools and structure you need to build Salesforce applications using source control, scratch orgs, and the Salesforce CLI.
+Shipment Intelligence is an enterprise-grade shipment tracking, delay risk prediction, and resolution platform built natively on the Salesforce Platform using Apex (API 68.0) and Lightning Web Components (LWC). It integrates with external tracking providers via REST APIs to synchronize shipment milestones, calculate rule-based delay risks, and empower customer support teams with operational visibility and automated communications.
 
-## Prerequisites
+---
 
-Before you start, make sure you have:
+## Architecture Overview
 
-- **Salesforce CLI** - Download from [developer.salesforce.com/tools/salesforcecli](https://developer.salesforce.com/tools/salesforcecli). See [Install Salesforce CLI](https://developer.salesforce.com/docs/atlas.en-us.sfdx_setup.meta/sfdx_setup/sfdx_setup_install_cli.htm) for details.
-- **VS Code with Salesforce Extension Pack** - See [Installation Instructions](https://developer.salesforce.com/docs/platform/sfvscode-extensions/guide/install.html) for details. Includes the Agentforce Vibes extension.
-- **A development org** - Sign up for a free Developer Edition org [here](https://developer.salesforce.com/signup).
-- **Dev Hub enabled** (optional, required to create scratch orgs) - You can enable Dev Hub in your development org under Setup > Dev Hub.  See [Provide Developers Access to Salesforce DX Tools](https://developer.salesforce.com/docs/atlas.en-us.sfdx_dev.meta/sfdx_dev/sfdx_setup_dx_tools.htm).
+Shipment Intelligence uses a decoupled, provider-adapter backend architecture paired with an application shell housing six purpose-built operational workspaces.
 
-## Project Structure
+### 1. Backend Service Layer (Apex)
 
-Your DX project follows this structure:
+- **`ITrackingProvider`**: Common tracking provider interface defining standardized tracking retrieval.
+- **`TrackingProviderFactory`**: Dynamic factory resolving the requested tracking provider implementation.
+- **`ShippoTrackingAdapter`**: Concrete adapter connecting `ITrackingProvider` to `ShippoService`.
+- **`ShippoService`**: HTTP client communicating with the Shippo Tracking REST API via Salesforce Named Credentials and External Credentials.
+- **`ShipmentService`**: Core domain service managing shipment persistence, tracking code normalization, status progression, and event deduplication.
+- **`ShipmentRiskCalculator`**: Rule-based risk evaluation engine scoring shipments into `On Track`, `At Risk`, or `Delayed` based on estimated delivery dates, tracking events, and carrier exceptions.
+- **`ShipmentController`**: AuraEnabled controller exposing cacheable and imperative operations to Lightning Web Components.
+- **`ShipmentInfo`**: Strongly-typed data transfer object (DTO) transferring normalized tracking payloads.
 
-- **`force-app/main/default/`** - Your metadata source files live in this default package directory. You can configure additional package directories in the `sfdx-project.json` file.
-- **`config/`** - Scratch org definitions and project settings
-- **`scripts/`** - Automation scripts for common tasks
-- **`sfdx-project.json`** - Project manifest that defines package directories, namespace, API version, and other project-level settings
+### 2. Data Model
 
-See [Salesforce DX Project Configuration](https://developer.salesforce.com/docs/atlas.en-us.sfdx_dev.meta/sfdx_dev/sfdx_dev_ws_config.htm).
+- **`Shipment__c`**: Primary consignment record storing tracking codes, carrier information, status, risk tier, estimated vs. actual delivery timestamps, and relationship to Salesforce `Case`.
+- **`Shipment_Event__c`**: Child milestone tracking event storing event timestamps, status progression, event descriptions, locations, and unique external event identifiers.
 
-## Get Started
+---
 
-Ready to start developing? The [Get Started with Salesforce DX](https://developer.salesforce.com/docs/atlas.en-us.sfdx_dev.meta/sfdx_dev/sfdx_dev_get_started_dx.htm) guide walks you through your first project, from creating a scratch org to creating a simple Apex class or LWC to deploying your code to a sandbox.
+## Operational Workspaces
 
-## Common Salesforce CLI Commands
+The platform UI is hosted within **`logisticsAppShell`**, featuring a command-centre sidebar, global search, and six workspaces:
 
-Here are common CLI commands that you'll use the most:
+1. **Control Tower (`shipmentDashboard`)**
+   - High-level operational overview and KPI telemetry.
+   - Status and risk filters, search by carrier or tracking code, and "Needs Attention" triage toggle.
+   - Interactive shipment journey stepper (Booked &rarr; In Transit &rarr; Out for Delivery &rarr; Delivered) with exception handling.
+   - Single-record and bulk Shippo tracking synchronization.
 
-- `sf org login web`: Authorize an org
-- `sf org open`: Open your org in a browser
-- `sf org create scratch`: Create a scratch org
-- `sf project deploy start`: Deploy metadata to your org
-- `sf project retrieve start`: Retrieve metadata from your org
-- `sf template generate <artifact>`: Scaffold new components, such as Apex classes and triggers, LWC components, Lightning apps, and more
-- `sf apex <command>`: Run Apex tests, run anonymous Apex blocks, and view logs
-- `sf data <command>`: Work with test data
-- `sf alias <command>`: Manage org aliases
-- `sf config <command>`: Configure CLI settings
+2. **Shipment Intelligence (`shipmentIntelligence`)**
+   - Deep-dive technical consignment investigation in a responsive Bento Grid layout.
+   - Chronological tracking milestone events with route and location markers.
 
-## Use Agentforce Vibes to Build Lightning Apps
+3. **Risk Intelligence (`riskIntelligence`)**
+   - Delay risk distribution visualizer across all active shipments.
+   - Slide-in technical investigation drawer detailing root-cause delay drivers.
 
-Transform your ideas into custom Lightning apps that extend CRM workflows directly in Lightning Experience. Through natural conversations with Agentforce Vibes, implement custom objects and fields, complex business logic, and dynamic UI components. See [Build a Lightning App Using Agentforce Vibes](https://developer.salesforce.com/docs/platform/einstein-for-devs/guide/lexapp-overview.html).
+4. **Exception Centre (`exceptionCentre`)**
+   - Urgency triage for critical delivery exceptions (Failed delivery attempts, Return to Sender, transit stalls).
+   - Prescriptive recommendation matrix for operational intervention.
+   - Human-in-the-loop resolution workflow capturing resolution notes and status.
 
-## Additional Resources
+5. **Analytics & Reports (`analyticsReports`)**
+   - Multi-carrier performance benchmarking (FedEx, UPS, DHL Express, Delhivery, Blue Dart).
+   - Transit duration analysis, on-time delivery percentages, and SLA compliance metrics.
 
-- [Agentforce Vibes Developer Guide](https://developer.salesforce.com/docs/platform/einstein-for-devs/guide/einstein-overview.html)
-- [Salesforce CLI Installation Guide](https://developer.salesforce.com/docs/atlas.en-us.sfdx_setup.meta/sfdx_setup/sfdx_setup_intro.htm)
-- [Salesforce DX Developer Guide](https://developer.salesforce.com/docs/atlas.en-us.sfdx_dev.meta/sfdx_dev/)
-- [Salesforce CLI Command Reference](https://developer.salesforce.com/docs/atlas.en-us.sfdx_cli_reference.meta/sfdx_cli_reference/)
-- [Salesforce CLI Plugin Development Guide](https://developer.salesforce.com/docs/platform/salesforce-cli-plugin/guide/conceptual-overview.html)
-- [Salesforce VS Code Extensions Documentation](https://developer.salesforce.com/tools/vscode/)
+6. **Case Management (`caseManagement`)**
+   - Case Explorer displaying Salesforce Cases linked to shipments.
+   - Dynamic layout switching between full-width table view and split-view detail panel.
+   - AI-assisted customer communication draft generation with human review before dispatch.
+
+---
+
+## Prerequisites & Development
+
+- **Salesforce CLI (`sf`)**: v2.x or later
+- **Node.js**: v18.x or v20.x
+- **Target Org**: Salesforce Developer Edition or Scratch Org (API Version 68.0)
+
+### Running Tests Locally
+
+```bash
+# Run all LWC Jest unit tests
+npm test
+
+# Run JavaScript linter across LWC components
+npm run lint
+
+# Check Git diff for trailing whitespace or formatting defects
+git diff --check
+```
+
+### Apex Tests
+
+```bash
+# Execute the full Apex regression test suite against target org
+sf apex run test --test-level RunSpecifiedTests --tests ShipmentControllerTest,ShipmentServiceTest,ShipmentRiskCalculatorTest,ShippoServiceTest,TrackingProviderFactoryTest,ShipmentDemoDataTest -o <target-org-alias>
+```

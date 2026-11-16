@@ -1074,7 +1074,7 @@ public with sharing class ShipmentController {
     }
 
     paragraphs.add(
-      'Best regards,\nCustomer Support Operations\nLogistics Intelligence Team'
+      'Best regards,\nCustomer Support Operations\nShipment Intelligence Team'
     );
     draft.body = String.join(paragraphs, '\n\n');
 

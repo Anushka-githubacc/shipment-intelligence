@@ -1,5 +1,5 @@
 /**
- * Logistics Intelligence Engine - Synthetic Demo Dataset Seeding Script
+ * Shipment Intelligence - Synthetic Demo Dataset Seeding Script
  *
  * Expands the demo dataset from 6 to 36 realistic synthetic shipment records
  * distributed across all 7 supported statuses and 3 risk classifications, with
@@ -422,7 +422,7 @@ for (AggregateResult ar : [
 }
 
 System.debug(LoggingLevel.INFO, '================================================');
-System.debug(LoggingLevel.INFO, 'LOGISTICS INTELLIGENCE ENGINE - SEEDING COMPLETE');
+System.debug(LoggingLevel.INFO, 'SHIPMENT INTELLIGENCE - SEEDING COMPLETE');
 System.debug(LoggingLevel.INFO, 'Total Shipments: ' + totalShipments);
 System.debug(LoggingLevel.INFO, 'Total Linked Cases: ' + totalCases + ' (' + linkedShipments + ' shipments linked)');
 System.debug(LoggingLevel.INFO, 'Shipment Events Fabricated: ' + eventCount + ' (Must be 0)');

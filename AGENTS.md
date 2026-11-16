@@ -1,4 +1,4 @@
-# Logistics Intelligence Engine — Agent Instructions
+# Shipment Intelligence — Agent Instructions
 
 ## Project Context
 
