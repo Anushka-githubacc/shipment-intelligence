@@ -244,31 +244,81 @@ describe("c-case-management", () => {
     expect(highCard.querySelector(".kpi-value").textContent).toBe("2");
   });
 
-  it("renders Case Explorer table with rows and auto-selects first case", async () => {
+  it("renders Case Explorer table with rows and initially does not select any case (table-only layout)", async () => {
+    const element = mount();
+    getShipmentCases.emit(MOCK_CASES);
+    await flush();
+
+    const layout = element.shadowRoot.querySelector(".case-workspace-layout");
+    expect(layout.classList.contains("table-only")).toBe(true);
+    expect(layout.classList.contains("with-detail")).toBe(false);
+
+    const rows = element.shadowRoot.querySelectorAll(".case-table tbody tr");
+    expect(rows.length).toBe(4);
+
+    // No row should be selected initially
+    rows.forEach((row) => {
+      expect(row.classList.contains("is-selected")).toBe(false);
+    });
+
+    // Inspection panel should not be rendered initially
+    expect(element.shadowRoot.querySelector(".inspection-panel")).toBeNull();
+  });
+
+  it("selecting a Case row opens the panel and sets with-detail layout", async () => {
     const element = mount();
     getShipmentCases.emit(MOCK_CASES);
     await flush();
 
     const rows = element.shadowRoot.querySelectorAll(".case-table tbody tr");
-    expect(rows.length).toBe(4);
+    rows[0].click();
+    await flush();
 
-    // First row should be selected
+    const layout = element.shadowRoot.querySelector(".case-workspace-layout");
+    expect(layout.classList.contains("with-detail")).toBe(true);
     expect(rows[0].classList.contains("is-selected")).toBe(true);
 
-    // Inspection panel should show details for Case 1
     const panelTitle = element.shadowRoot.querySelector(".panel-title");
+    expect(panelTitle).not.toBeNull();
     expect(panelTitle.textContent).toBe("00001001");
 
-    // Linked shipment should display
     const trackingCode = element.shadowRoot.querySelector(
       ".metric-val.text-cyan"
     );
     expect(trackingCode.textContent).toBe("SHIPPO_TRANSIT");
   });
 
+  it("closing the inspection panel clears selection and restores table-only layout", async () => {
+    const element = mount();
+    getShipmentCases.emit(MOCK_CASES);
+    await flush();
+
+    const rows = element.shadowRoot.querySelectorAll(".case-table tbody tr");
+    rows[0].click();
+    await flush();
+
+    expect(
+      element.shadowRoot.querySelector(".inspection-panel")
+    ).not.toBeNull();
+
+    const closeBtn = element.shadowRoot.querySelector(".btn-close-panel");
+    expect(closeBtn).not.toBeNull();
+    closeBtn.click();
+    await flush();
+
+    const layout = element.shadowRoot.querySelector(".case-workspace-layout");
+    expect(layout.classList.contains("table-only")).toBe(true);
+    expect(element.shadowRoot.querySelector(".inspection-panel")).toBeNull();
+    expect(rows[0].classList.contains("is-selected")).toBe(false);
+  });
+
   it("renders milestone tracking events when available for selected case", async () => {
     const element = mount();
     getShipmentCases.emit(MOCK_CASES);
+    await flush();
+
+    const rows = element.shadowRoot.querySelectorAll(".case-table tbody tr");
+    rows[0].click();
     await flush();
 
     getShipmentEvents.emit(MOCK_EVENTS);
@@ -459,6 +509,10 @@ describe("c-case-management", () => {
     getShipmentCases.emit(MOCK_CASES);
     await flush();
 
+    const rows = element.shadowRoot.querySelectorAll(".case-table tbody tr");
+    rows[0].click();
+    await flush();
+
     const subjectInput = element.shadowRoot.querySelector(
       ".edit-form-grid lightning-input"
     );
@@ -492,6 +546,42 @@ describe("c-case-management", () => {
     expect(refreshApex).toHaveBeenCalled();
   });
 
+  it("cancels unsaved case edits and restores original values without calling updateCase", async () => {
+    const element = mount();
+    getShipmentCases.emit(MOCK_CASES);
+    await flush();
+
+    const rows = element.shadowRoot.querySelectorAll(".case-table tbody tr");
+    rows[0].click();
+    await flush();
+
+    const subjectInput = element.shadowRoot.querySelector(
+      ".edit-form-grid lightning-input"
+    );
+    expect(subjectInput.value).toBe("Delayed shipment investigation");
+
+    subjectInput.dispatchEvent(
+      new CustomEvent("change", {
+        detail: { value: "Temporary Changed Subject" }
+      })
+    );
+    await flush();
+
+    const buttons = element.shadowRoot.querySelectorAll(
+      ".form-actions lightning-button"
+    );
+    const cancelBtn = Array.from(buttons).find((b) => b.label === "Cancel");
+    expect(cancelBtn).not.toBeUndefined();
+    cancelBtn.click();
+    await flush();
+
+    expect(updateCase).not.toHaveBeenCalled();
+    const restoredInput = element.shadowRoot.querySelector(
+      ".edit-form-grid lightning-input"
+    );
+    expect(restoredInput.value).toBe("Delayed shipment investigation");
+  });
+
   it("handles case update error properly", async () => {
     updateCase.mockRejectedValue({
       body: { message: "Validation rule failed: Status invalid" }
@@ -499,6 +589,10 @@ describe("c-case-management", () => {
 
     const element = mount();
     getShipmentCases.emit(MOCK_CASES);
+    await flush();
+
+    const rows = element.shadowRoot.querySelectorAll(".case-table tbody tr");
+    rows[0].click();
     await flush();
 
     const saveBtn = element.shadowRoot.querySelector(".btn-save");
@@ -597,6 +691,10 @@ describe("c-case-management", () => {
     getShipmentCases.emit(MOCK_CASES);
     await flush();
 
+    const rows = element.shadowRoot.querySelectorAll(".case-table tbody tr");
+    rows[0].click();
+    await flush();
+
     const assignBtn = element.shadowRoot.querySelector(".btn-assign-me");
     expect(assignBtn).not.toBeNull();
     assignBtn.click();
@@ -621,6 +719,10 @@ describe("c-case-management", () => {
 
     const element = mount();
     getShipmentCases.emit(MOCK_CASES);
+    await flush();
+
+    const rows = element.shadowRoot.querySelectorAll(".case-table tbody tr");
+    rows[0].click();
     await flush();
 
     const statusCombobox = element.shadowRoot.querySelector(
@@ -667,6 +769,10 @@ describe("c-case-management", () => {
     getShipmentCases.emit(MOCK_CASES);
     await flush();
 
+    const rows = element.shadowRoot.querySelectorAll(".case-table tbody tr");
+    rows[0].click();
+    await flush();
+
     const commSection = element.shadowRoot.querySelector(
       ".customer-comm-section"
     );
@@ -710,6 +816,10 @@ describe("c-case-management", () => {
 
     const element = mount();
     getShipmentCases.emit(MOCK_CASES);
+    await flush();
+
+    const rows = element.shadowRoot.querySelectorAll(".case-table tbody tr");
+    rows[0].click();
     await flush();
 
     const draftBtn = element.shadowRoot.querySelector(".btn-draft-update");
@@ -766,6 +876,10 @@ describe("c-case-management", () => {
     getShipmentCases.emit(MOCK_CASES);
     await flush();
 
+    const rows = element.shadowRoot.querySelectorAll(".case-table tbody tr");
+    rows[0].click();
+    await flush();
+
     const draftBtn = element.shadowRoot.querySelector(".btn-draft-update");
     draftBtn.click();
     await flush();
@@ -807,6 +921,10 @@ describe("c-case-management", () => {
 
     const element = mount();
     getShipmentCases.emit(MOCK_CASES);
+    await flush();
+
+    const rows = element.shadowRoot.querySelectorAll(".case-table tbody tr");
+    rows[0].click();
     await flush();
 
     const draftBtn = element.shadowRoot.querySelector(".btn-draft-update");
@@ -885,6 +1003,10 @@ describe("c-case-management", () => {
     getShipmentCases.emit(MOCK_CASES);
     await flush();
 
+    const rows = element.shadowRoot.querySelectorAll(".case-table tbody tr");
+    rows[0].click();
+    await flush();
+
     const draftBtn = element.shadowRoot.querySelector(".btn-draft-update");
     draftBtn.click();
     await flush();
@@ -907,6 +1029,10 @@ describe("c-case-management", () => {
 
     const element = mount();
     getShipmentCases.emit(MOCK_CASES);
+    await flush();
+
+    const rows = element.shadowRoot.querySelectorAll(".case-table tbody tr");
+    rows[0].click();
     await flush();
 
     const draftBtn = element.shadowRoot.querySelector(".btn-draft-update");

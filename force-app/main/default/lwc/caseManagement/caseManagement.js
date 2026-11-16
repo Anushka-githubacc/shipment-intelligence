@@ -99,29 +99,23 @@ export default class CaseManagement extends LightningElement {
       this.errorMessage = "";
       this.isLoading = false;
 
-      // Retain or select first case
-      if (this.cases.length > 0) {
-        if (this.selectedCaseId) {
-          const stillExists = this.cases.find(
-            (c) => c.Id === this.selectedCaseId
-          );
-          if (!stillExists) {
-            this.selectCase(this.cases[0]);
-          } else {
-            // Keep current edit form synced
-            this.syncEditForm(stillExists);
-            this.syncShipmentResolutionForm(stillExists);
-          }
+      // Retain existing selection if still present in data, otherwise clear safely
+      if (this.selectedCaseId) {
+        const stillExists = this.cases.find(
+          (c) => c.Id === this.selectedCaseId
+        );
+        if (stillExists) {
+          // Keep current edit form synced
+          this.syncEditForm(stillExists);
+          this.syncShipmentResolutionForm(stillExists);
         } else {
-          this.selectCase(this.cases[0]);
+          this.handleCloseDetail();
         }
-      } else {
-        this.selectedCaseId = null;
       }
     } else if (error) {
       this.errorMessage = this.extractErrorMessage(error);
       this.cases = [];
-      this.selectedCaseId = null;
+      this.handleCloseDetail();
       this.isLoading = false;
     }
   }
@@ -397,6 +391,12 @@ export default class CaseManagement extends LightningElement {
     return Boolean(this.selectedCase);
   }
 
+  get mainLayoutClass() {
+    return this.hasSelectedCase
+      ? "case-workspace-layout with-detail"
+      : "case-workspace-layout table-only";
+  }
+
   // --- Tracking Milestones for Selected Shipment ---
 
   get trackingMilestones() {
@@ -571,6 +571,20 @@ export default class CaseManagement extends LightningElement {
     if (target) {
       this.selectCase(target);
     }
+  }
+
+  handleCloseDetail() {
+    this.selectedCaseId = null;
+    this.editSubject = "";
+    this.editStatus = "";
+    this.editPriority = "";
+    this.editDescription = "";
+    this.clearAlerts();
+    this.clearCustomerCommunicationDraft();
+    this.shipmentResolutionStatus = "New";
+    this.shipmentResolutionNotes = "";
+    this.shipmentResolutionSuccessMessage = "";
+    this.shipmentResolutionErrorMessage = "";
   }
 
   // Form field change handlers

@@ -226,7 +226,7 @@
       </section>
 
       <!-- Two-Column Case Workspace: Case Explorer Table + Inspection Panel -->
-      <div class="case-workspace-layout">
+      <div class={mainLayoutClass}>
         <!-- Left Column: Case Explorer Table -->
         <div class="case-explorer-column">
           <article class="explorer-card">
@@ -271,7 +271,9 @@
                         <td class="font-semibold text-primary">
                           {row.caseNumber}
                         </td>
-                        <td class="subject-cell">{row.subject}</td>
+                        <td class="subject-cell" title={row.subject}>
+                          {row.subject}
+                        </td>
                         <td>
                           <template lwc:if={row.hasShipment}>
                             <div class="shipment-cell">
@@ -346,8 +348,8 @@
         </div>
 
         <!-- Right Column: Case Inspection & Actions Panel -->
-        <div class="case-inspection-column">
-          <template lwc:if={hasSelectedCase}>
+        <template lwc:if={hasSelectedCase}>
+          <div class="case-inspection-column">
             <article class="inspection-panel">
               <!-- Inspection Header -->
               <div class="panel-header">
@@ -367,6 +369,18 @@
                     disabled={isAssigning}
                     class="btn-assign-me"
                   ></lightning-button>
+                  <button
+                    type="button"
+                    class="btn-close-panel"
+                    onclick={handleCloseDetail}
+                    aria-label="Close Case Details"
+                    title="Close Case Details"
+                  >
+                    <lightning-icon
+                      icon-name="utility:close"
+                      size="x-small"
+                    ></lightning-icon>
+                  </button>
                 </div>
               </div>
 
@@ -764,22 +778,8 @@
                 </template>
               </div>
             </article>
-          </template>
-          <template lwc:else>
-            <article class="inspection-empty">
-              <lightning-icon
-                icon-name="utility:touch_action"
-                size="medium"
-                class="empty-icon"
-              ></lightning-icon>
-              <h4 class="empty-title">Select a Support Case</h4>
-              <p class="empty-desc">
-                Choose a case from the explorer table to inspect linked shipment
-                telemetry and perform triage actions.
-              </p>
-            </article>
-          </template>
-        </div>
+          </div>
+        </template>
       </div>
     </template>
   </div>

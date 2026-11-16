@@ -1,25 +1,31 @@
 :host {
-  --canvas: #f6f3ee;
-  --ink: #17202a;
-  --muted: #5d6b78;
-  --card: #ffffff;
-  --line: rgba(23, 32, 42, 0.08);
-  --cyan: #00b8d4;
-  --cyan-deep: #0788a0;
-  --violet: #6d5efc;
+  --canvas: #f3f5f7;
+  --surface: #ffffff;
+  --muted-surface: #eaf0f4;
+  --border: #dce3e9;
+  --text-primary: #172536;
+  --text-secondary: #657589;
+  --text-muted: #8a99a8;
+  --cyan: #00bbd4;
+  --cyan-deep: #008ba3;
+  --violet: #7668e8;
   --violet-soft: #efeaff;
-  --emerald: #0f9f6e;
+  --emerald: #159b72;
   --emerald-soft: #e7f8f1;
-  --amber: #d4880f;
+  --amber: #d99a26;
   --amber-soft: #fff4df;
-  --coral: #e15b64;
+  --coral: #de6262;
   --coral-soft: #ffecee;
-  --shadow: 0 14px 34px rgba(28, 35, 51, 0.07);
+  --shadow-sm: 0 1px 3px rgba(17, 28, 43, 0.05);
+  --shadow-card: 0 4px 14px rgba(17, 28, 43, 0.07);
+  --font-mono: "SF Mono", "Consolas", "Courier New", monospace;
   display: block;
   min-height: 100%;
-  color: var(--ink);
+  color: var(--text-primary);
   background: var(--canvas);
-  font-family: "Segoe UI", "Salesforce Sans", system-ui, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
 }
 
 .dashboard {
@@ -65,13 +71,17 @@ p {
 }
 
 h1 {
-  font-size: 2rem;
-  line-height: 1.1;
-  letter-spacing: -0.03em;
+  font-size: 1.85rem;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  font-weight: 800;
+  color: var(--text-primary);
 }
 
 h2 {
-  font-size: 1.15rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
 }
 
 .lede,
@@ -80,13 +90,14 @@ h2 {
 .reason,
 .step-state,
 .test-badge-note {
-  color: var(--muted);
+  color: var(--text-secondary);
 }
 
 .lede {
-  max-width: 40rem;
-  margin-top: 0.55rem;
+  max-width: 42rem;
+  margin-top: 0.5rem;
   line-height: 1.5;
+  font-size: 0.88rem;
 }
 
 .masthead-actions {
@@ -106,9 +117,10 @@ h2 {
 .test-badge-label {
   display: inline-flex;
   align-items: center;
-  border-radius: 999px;
-  padding: 0.28rem 0.7rem;
-  background: #fff4d8;
+  border-radius: 4px;
+  padding: 0.25rem 0.65rem;
+  background: rgba(217, 154, 38, 0.12);
+  border: 1px solid #f3d28e;
   color: #8a5a00;
   font-size: 0.72rem;
   font-weight: 800;
@@ -116,7 +128,7 @@ h2 {
 }
 
 .test-badge-note {
-  font-size: 0.75rem;
+  font-size: 0.74rem;
 }
 
 .action-row {
@@ -127,24 +139,28 @@ h2 {
 .btn {
   appearance: none;
   border: 0;
-  border-radius: 999px;
-  padding: 0.68rem 1.05rem;
+  border-radius: 6px;
+  padding: 0.55rem 1rem;
   background: var(--cyan);
   color: #04242b;
   font: inherit;
-  font-size: 0.92rem;
+  font-size: 0.85rem;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 8px 18px rgba(0, 184, 212, 0.22);
+  box-shadow: 0 2px 6px rgba(0, 187, 212, 0.25);
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .btn:hover:enabled {
-  background: #00c6e4;
+  background: #00cce6;
+  box-shadow: 0 4px 10px rgba(0, 187, 212, 0.35);
 }
 
 .btn:focus-visible,
 .row:focus-visible {
-  outline: 3px solid rgba(0, 184, 212, 0.45);
+  outline: 2px solid var(--cyan);
   outline-offset: 2px;
 }
 
@@ -156,18 +172,26 @@ h2 {
 
 .btn-secondary {
   background: var(--violet-soft);
-  color: #3c2f9e;
+  color: #4335a8;
+  border: 1px solid rgba(118, 104, 232, 0.2);
   box-shadow: none;
 }
 
 .btn-secondary:hover:enabled {
-  background: #e3dcff;
+  background: #e5defc;
 }
 
 .btn-ghost {
-  background: var(--card);
-  color: var(--ink);
-  box-shadow: inset 0 0 0 1px var(--line);
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-ghost:hover:enabled {
+  background: var(--muted-surface);
+  border-color: var(--cyan);
+  color: var(--cyan-deep);
 }
 
 .btn-primary {
@@ -189,25 +213,25 @@ h2 {
 .kpi,
 .card,
 .state-card {
-  background: var(--card);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  border-radius: 16px;
-  box-shadow: var(--shadow);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: var(--shadow-sm);
 }
 
 .kpi {
   position: relative;
   overflow: hidden;
-  padding: 1.1rem 1.15rem 1.15rem;
+  padding: 1.1rem 1.15rem;
 }
 
 .kpi::before {
   content: "";
   display: block;
-  width: 2.4rem;
-  height: 0.28rem;
+  width: 2.2rem;
+  height: 0.25rem;
   margin-bottom: 0.85rem;
-  border-radius: 999px;
+  border-radius: 2px;
   background: var(--cyan);
 }
 
@@ -224,15 +248,17 @@ h2 {
 }
 
 .kpi-label {
-  color: var(--muted);
-  font-size: 0.82rem;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .kpi-value {
   margin-top: 0.35rem;
   font-size: 2rem;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: -0.04em;
   line-height: 1;
 }
@@ -261,7 +287,7 @@ h2 {
 }
 
 .bento {
-  grid-template-columns: minmax(0, 1.7fr) minmax(280px, 0.95fr);
+  grid-template-columns: minmax(0, 1.7fr) minmax(300px, 0.95fr);
   align-items: start;
 }
 
@@ -285,20 +311,22 @@ table {
 }
 
 th {
-  padding: 0.35rem 0.75rem 0.7rem;
-  color: var(--muted);
-  font-size: 0.75rem;
+  padding: 0.5rem 0.75rem 0.7rem;
+  color: var(--text-secondary);
+  font-size: 0.74rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   text-align: left;
   text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
 }
 
 td {
   padding: 0.85rem 0.75rem;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--border);
   vertical-align: middle;
   overflow-wrap: anywhere;
+  font-size: 0.86rem;
 }
 
 .ops-grid {
@@ -331,16 +359,16 @@ td {
 
 .meter-meta {
   margin-bottom: 0.35rem;
-  color: var(--muted);
+  color: var(--text-secondary);
   font-size: 0.78rem;
   font-weight: 700;
 }
 
 .meter-track {
-  height: 8px;
+  height: 6px;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(23, 32, 42, 0.06);
+  background: var(--muted-surface);
 }
 
 .meter-fill {
@@ -374,13 +402,14 @@ td {
   width: 100%;
   padding: 0.55rem 0;
   border: 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--border);
   background: transparent;
   color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
   flex-wrap: wrap;
+  transition: color 0.15s ease;
 }
 
 .activity-list li:last-child .activity-item {
@@ -398,35 +427,37 @@ td {
 
 .activity-code {
   font-weight: 700;
+  font-family: var(--font-mono);
   overflow-wrap: anywhere;
 }
 
 .activity-meta {
-  color: var(--muted);
+  color: var(--text-secondary);
   font-size: 0.78rem;
 }
 
 .row {
   cursor: pointer;
+  transition: background 0.12s ease;
 }
 
 .row:hover {
-  background: rgba(0, 184, 212, 0.04);
+  background: rgba(0, 187, 212, 0.04);
 }
 
 .row.is-selected {
-  background: rgba(0, 184, 212, 0.09);
+  background: rgba(0, 187, 212, 0.08);
   box-shadow: inset 3px 0 0 var(--cyan);
 }
 
 .pill {
   display: inline-flex;
   align-items: center;
-  border-radius: 999px;
-  padding: 0.22rem 0.6rem;
-  background: #eef2f5;
-  color: var(--ink);
-  font-size: 0.78rem;
+  border-radius: 4px;
+  padding: 0.2rem 0.55rem;
+  background: var(--muted-surface);
+  color: var(--text-primary);
+  font-size: 0.76rem;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -434,16 +465,19 @@ td {
 .pill-emerald {
   background: var(--emerald-soft);
   color: var(--emerald);
+  border: 1px solid rgba(21, 155, 114, 0.25);
 }
 
 .pill-amber {
   background: var(--amber-soft);
   color: #8a5a00;
+  border: 1px solid rgba(217, 154, 38, 0.25);
 }
 
 .pill-coral {
   background: var(--coral-soft);
   color: #b42338;
+  border: 1px solid rgba(222, 98, 98, 0.25);
 }
 
 .facts {
@@ -454,37 +488,44 @@ td {
 }
 
 dt {
-  color: var(--muted);
+  color: var(--text-secondary);
   font-size: 0.75rem;
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 dd {
   margin: 0.2rem 0 0;
   font-weight: 600;
+  font-size: 0.88rem;
 }
 
 .reason {
   margin-bottom: 1rem;
   line-height: 1.45;
+  font-size: 0.86rem;
 }
 
 .exception {
   margin-bottom: 1rem;
-  padding: 0.9rem 1rem;
-  border-radius: 16px;
+  padding: 0.85rem 1rem;
+  border-radius: 6px;
   background: var(--coral-soft);
+  border: 1px solid rgba(222, 98, 98, 0.25);
   color: #8d2432;
 }
 
 .exception[data-exception="return_to_sender"] {
   background: var(--violet-soft);
+  border-color: rgba(118, 104, 232, 0.25);
   color: #3c2f9e;
 }
 
 .exception[data-exception="unknown"] {
-  background: #eef2f5;
-  color: #31404d;
+  background: var(--muted-surface);
+  border-color: var(--border);
+  color: var(--text-primary);
 }
 
 .exception-label {
@@ -515,7 +556,7 @@ dd {
   bottom: -0.2rem;
   left: 0.48rem;
   width: 2px;
-  background: #e4e8ee;
+  background: var(--border);
 }
 
 .marker {
@@ -523,9 +564,9 @@ dd {
   width: 1.05rem;
   height: 1.05rem;
   margin-top: 0.15rem;
-  border: 2px solid #c9d2dc;
+  border: 2px solid #b6c2cf;
   border-radius: 999px;
-  background: #fff;
+  background: var(--surface);
   z-index: 1;
 }
 
@@ -537,11 +578,11 @@ dd {
 
 .step.is-complete .step-label,
 .step.is-current .step-label {
-  color: var(--ink);
+  color: var(--text-primary);
 }
 
 .step.is-current .marker {
-  box-shadow: 0 0 0 5px rgba(0, 184, 212, 0.16);
+  box-shadow: 0 0 0 4px rgba(0, 187, 212, 0.2);
 }
 
 .step.is-halted .marker {
@@ -550,7 +591,7 @@ dd {
 }
 
 .step.is-halted:not(:last-child) .marker::after {
-  background: rgba(225, 91, 100, 0.35);
+  background: rgba(222, 98, 98, 0.4);
 }
 
 .step-copy {
@@ -562,6 +603,7 @@ dd {
 
 .step-label {
   font-weight: 700;
+  font-size: 0.86rem;
 }
 
 .step-state {
@@ -591,22 +633,26 @@ dd {
 .banner {
   margin: 0 0 1rem;
   padding: 0.8rem 1rem;
-  border-radius: 14px;
+  border-radius: 6px;
   line-height: 1.4;
+  font-size: 0.86rem;
 }
 
 .banner-success {
   background: var(--emerald-soft);
+  border: 1px solid rgba(21, 155, 114, 0.25);
   color: #086348;
 }
 
 .banner-error {
   background: var(--coral-soft);
+  border: 1px solid rgba(222, 98, 98, 0.25);
   color: #8d2432;
 }
 
 .banner-info {
   background: #e7f8fc;
+  border: 1px solid rgba(0, 187, 212, 0.25);
   color: #07586a;
 }
 
@@ -638,7 +684,7 @@ dd {
   }
 
   h1 {
-    font-size: 1.6rem;
+    font-size: 1.5rem;
   }
 
   .kpi-grid,
@@ -666,8 +712,8 @@ dd {
   .row {
     margin-bottom: 0.75rem;
     padding: 0.35rem 0;
-    border: 1px solid var(--line);
-    border-radius: 16px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
   }
 
   td {
@@ -680,7 +726,7 @@ dd {
 
   td::before {
     content: attr(data-label);
-    color: var(--muted);
+    color: var(--text-secondary);
     font-size: 0.75rem;
     font-weight: 700;
   }
