@@ -1,5 +1,7 @@
 :host {
   display: block;
+  width: 100%;
+  box-sizing: border-box;
   --color-bg-app: #f3f5f7;
   --color-surface: #ffffff;
   --color-surface-hover: #eaf0f4;
@@ -36,6 +38,7 @@
 
 .intel-container {
   display: flex;
+  width: 100%;
   gap: 1.5rem;
   min-height: calc(100vh - 120px);
   min-width: 0;

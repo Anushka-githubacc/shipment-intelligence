@@ -1,6 +1,7 @@
 :host {
   display: block;
   width: 100%;
+  box-sizing: border-box;
   --canvas: #f3f5f7;
   --surface: #ffffff;
   --muted-surface: #eaf0f4;
@@ -29,6 +30,8 @@
 }
 
 .analytics-container {
+  width: 100%;
+  box-sizing: border-box;
   padding: 1.5rem;
   background-color: var(--canvas);
   min-height: 100%;

@@ -20,6 +20,8 @@
   --shadow-card: 0 4px 14px rgba(17, 28, 43, 0.07);
   --font-mono: "SF Mono", "Consolas", "Courier New", monospace;
   display: block;
+  width: 100%;
+  box-sizing: border-box;
   min-height: 100%;
   color: var(--text-primary);
   background: var(--canvas);
@@ -30,6 +32,7 @@
 
 .dashboard {
   box-sizing: border-box;
+  width: 100%;
   max-width: 1480px;
   margin: 0 auto;
   padding: 1.5rem;
